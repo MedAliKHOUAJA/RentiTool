@@ -1,42 +1,42 @@
-# Online Booking NextJs Template: Chisfis
+# RentiTool: Location d'outils entre particuliers
 
-Welcome to **Chisfis**, a responsive Nextjs template theme tailored for Online booking, Listing, Real Estate, and booking systems. Whether you're running an accommodation service, travel experience, cruise, car rental, real estate, or a travel agency, Chisfis has got you covered.
+Bienvenue sur **RentiTool**, une application Next.js dédiée à la location d'outils entre particuliers. Que vous ayez besoin d'outils pour le bricolage, le jardinage ou la construction, RentiTool est là pour vous.
 
-![Chisfis Banner](https://i.ibb.co/JqPfydC/b-landing.png) 
+![RentiTool Banner](https://i.ibb.co/JqPfydC/b-landing.png) 
 
-## 🌟 Features
+## 🌟 Fonctionnalités
 
-- **Responsive Design**: Modern and fresh design across all devices.
-- **Booking & Listing**: Dedicated templates for booking and listing.
-- **30+ Pages**: A plethora of pages to suit all your needs.
-- **Tailwindcss v3.x**: Built on the latest version for a sleek design.
-- **Dark & Light Modes**: Switch between themes seamlessly.
-- **Latest Tech Stack**: NextJs 13.4.x (`app` directory), Typescript, and TailwindCss.
-- **React Ecosystem**: HeadlessUI components, React v.18.x, Google Map React, React-datepicker, and more.
-- **Code Quality**: Proptypes checking, React hooks, and Prettier for a consistent codebase.
-- **Interactive Components**: Over 8 listing cards, modal gallery, checkout pages, and more.
-- **Built-in React Packages**: A collection of essential packages for a smooth development experience.
+- **Design Responsive** : Design moderne et frais sur tous les appareils.
+- **Location d'outils** : Gestion complète des annonces et des réservations d'outils.
+- **30+ Pages** : Une pléthore de pages pour répondre à tous vos besoins.
+- **Tailwindcss v3.x** : Construit sur la dernière version pour un design élégant.
+- **Modes Clair & Sombre** : Basculez entre les thèmes de manière transparente.
+- **Pile technologique moderne** : NextJs 13.4.x (répertoire `app`), Typescript et TailwindCss.
+- **Écosystème React** : Composants HeadlessUI, React v.18.x, Google Map React, React-datepicker, et plus encore.
+- **Qualité du code** : Vérification des Proptypes, hooks React et Prettier pour une base de code cohérente.
+- **Composants interactifs** : Plus de 8 cartes d'annonces, galerie modale, pages de paiement, et plus encore.
+- **Packages React intégrés** : Une collection de packages essentiels pour une expérience de développement fluide.
 
-## 📦 In The Box
+## 📦 Inclus
 
-- Full source code of the theme.
-- All React component files.
-- CSS & SCSS source codes.
-- All plugins & libraries.
-- Comprehensive documentation.
+- Code source complet du thème.
+- Tous les fichiers de composants React.
+- Codes source CSS & SCSS.
+- Tous les plugins et bibliothèques.
+- Documentation complète.
 
-## 🚀 Getting Started
+## 🚀 Démarrage rapide
 
-1. Clone the repository.
-2. Navigate to the `app` directory.
-3. Install dependencies using `npm install` or `yarn install`.
-4. Run the development server using `npm run dev` or `yarn dev`.
-5. Explore the documentation for more details.
+1. Clonez le dépôt.
+2. Naviguez vers le répertoire `app`.
+3. Installez les dépendances avec `npm install` ou `yarn install`.
+4. Lancez le serveur de développement avec `npm run dev` ou `yarn dev`.
+5. Explorez la documentation pour plus de détails.
 
-## 🙏 Acknowledgements
+## 🙏 Remerciements
 
-A big shoutout to all the libraries, plugins, and assets that made this project possible.
+Un grand merci à toutes les bibliothèques, plugins et ressources qui ont rendu ce projet possible.
 
 ---
 
-Crafted with ❤️ by [Hamed Hasan](https://github.com/Hamed-Hasan). Connect with me on [LinkedIn](https://www.linkedin.com/in/hamed-hasan).
+Conçu avec ❤️ par [Hamed Hasan](https://github.com/Hamed-Hasan). Connectez-vous avec moi sur [LinkedIn](https://www.linkedin.com/in/hamed-hasan).

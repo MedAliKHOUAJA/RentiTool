@@ -26,23 +26,23 @@ const DEMO_DATA = [
   {
     id: 1,
     clientName: "Tiana Abie",
-    clientAddress: "Malaysia",
+    clientAddress: "France",
     content:
-      "This place is exactly like the picture posted on Chisfis. Great service, we had a great stay!",
+      "Cette plateforme est exactement comme décrite sur RentiTool. Excellent service, j'ai pu louer l'outil parfait !",
   },
   {
     id: 2,
     clientName: "Lennie Swiffan",
-    clientAddress: "London",
+    clientAddress: "France",
     content:
-      "This place is exactly like the picture posted on Chisfis. Great service, we had a great stay!",
+      "Cette plateforme est exactement comme décrite sur RentiTool. Excellent service, j'ai pu louer l'outil parfait !",
   },
   {
     id: 3,
     clientName: "Berta Emili",
-    clientAddress: "Tokyo",
+    clientAddress: "France",
     content:
-      "This place is exactly like the picture posted on Chisfis. Great service, we had a great stay!",
+      "Cette plateforme est exactement comme décrite sur RentiTool. Excellent service, j'ai pu louer l'outil parfait !",
   },
 ];
 
@@ -117,8 +117,8 @@ const SectionClientSay: FC<SectionClientSayProps> = ({
 
   return (
     <div className={`nc-SectionClientSay relative ${className} `}>
-      <Heading desc="Let's see what people think of Chisfis" isCenter>
-        Good news from far away
+      <Heading desc="Découvrez ce que nos utilisateurs pensent de RentiTool" isCenter>
+        Témoignages
       </Heading>
       <div className="relative md:mb-16 max-w-2xl mx-auto">
         {renderBg()}

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "tool_1",
+    "authorId": 1,
+    "href": "/tool-detail",
+    "listingCategoryId": 10,
+    "title": "Perceuse-visseuse sans fil Pro",
+    "featuredImage": "/images/placeholder-large.png",
+    "desc": "Une perceuse-visseuse sans fil puissante et polyvalente, idéale pour tous vos travaux de bricolage et d'assemblage. Livrée avec deux batteries et un chargeur rapide.",
+    "commentCount": 28,
+    "viewCount": 1480,
+    "address": "Paris, France",
+    "reviewStart": 4.8,
+    "reviewCount": 34,
+    "like": false,
+    "price": "15",
+    "isAds": null,
+    "saleOff": "-10%",
+    "date": "2023-10-26",
+    "galleryImgs": ["/images/placeholder-large.png", "/images/placeholder-large.png", "/images/placeholder-large.png"],
+    "map": {
+      "lat": 48.8566,
+      "lng": 2.3522
+    }
+  },
+  {
+    "id": "tool_2",
+    "authorId": 2,
+    "href": "/tool-detail",
+    "listingCategoryId": 11,
+    "title": "Tondeuse à gazon électrique",
+    "featuredImage": "/images/placeholder-large.png",
+    "desc": "Tondeuse électrique légère et facile à manier, parfaite pour les jardins de petite à moyenne taille. Largeur de coupe de 32 cm.",
+    "commentCount": 12,
+    "viewCount": 980,
+    "address": "Lyon, France",
+    "reviewStart": 4.5,
+    "reviewCount": 21,
+    "like": true,
+    "price": "25",
+    "isAds": true,
+    "saleOff": null,
+    "date": "2023-10-27",
+    "galleryImgs": ["/images/placeholder-large.png", "/images/placeholder-large.png"],
+    "map": {
+      "lat": 45.7640,
+      "lng": 4.8357
+    }
+  },
+  {
+    "id": "tool_3",
+    "authorId": 3,
+    "href": "/tool-detail",
+    "listingCategoryId": 10,
+    "title": "Scie circulaire haute performance",
+    "featuredImage": "/images/placeholder-large.png",
+    "desc": "Scie circulaire puissante pour des coupes précises et rapides dans le bois. Idéale pour les charpentiers et les bricoleurs avertis.",
+    "commentCount": 18,
+    "viewCount": 1100,
+    "address": "Marseille, France",
+    "reviewStart": 4.9,
+    "reviewCount": 25,
+    "like": false,
+    "price": "20",
+    "isAds": null,
+    "saleOff": "-5%",
+    "date": "2023-10-28",
+    "galleryImgs": ["/images/placeholder-large.png", "/images/placeholder-large.png"],
+    "map": {
+      "lat": 43.2965,
+      "lng": 5.3698
+    }
+  },
+  {
+    "id": "tool_4",
+    "authorId": 4,
+    "href": "/tool-detail",
+    "listingCategoryId": 12,
+    "title": "Bétonnière de chantier 160L",
+    "featuredImage": "/images/placeholder-large.png",
+    "desc": "Bétonnière robuste de 160 litres, parfaite pour les petits et moyens chantiers. Facile à transporter et à utiliser.",
+    "commentCount": 35,
+    "viewCount": 2500,
+    "address": "Lille, France",
+    "reviewStart": 4.7,
+    "reviewCount": 40,
+    "like": false,
+    "price": "40",
+    "isAds": null,
+    "saleOff": null,
+    "date": "2023-10-29",
+    "galleryImgs": ["/images/placeholder-large.png", "/images/placeholder-large.png"],
+    "map": {
+      "lat": 50.6292,
+      "lng": 3.0573
+    }
+  },
+  {
+    "id": "tool_5",
+    "authorId": 1,
+    "href": "/tool-detail",
+    "listingCategoryId": 11,
+    "title": "Taille-haie télescopique",
+    "featuredImage": "/images/placeholder-large.png",
+    "desc": "Taille-haie télescopique électrique pour l'entretien de vos haies hautes sans échelle. Lame de 50 cm, portée jusqu'à 3 mètres.",
+    "commentCount": 9,
+    "viewCount": 750,
+    "address": "Bordeaux, France",
+    "reviewStart": 4.6,
+    "reviewCount": 15,
+    "like": true,
+    "price": "22",
+    "isAds": false,
+    "saleOff": null,
+    "date": "2023-10-30",
+    "galleryImgs": ["/images/placeholder-large.png", "/images/placeholder-large.png"],
+    "map": {
+      "lat": 44.8378,
+      "lng": -0.5792
+    }
+  }
+]

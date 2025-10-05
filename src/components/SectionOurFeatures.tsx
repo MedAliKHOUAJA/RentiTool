@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import rightImgPng from "@/images/our-features.png";
+import rightImgDemo from "@/images/tools/pourquoi-choisir-rentitool.png";
 import Image, { StaticImageData } from "next/image";
 import Badge from "@/shared/Badge";
 
@@ -11,7 +11,7 @@ export interface SectionOurFeaturesProps {
 
 const SectionOurFeatures: FC<SectionOurFeaturesProps> = ({
   className = "lg:py-14",
-  rightImg = rightImgPng,
+  rightImg = rightImgDemo,
   type = "type1",
 }) => {
   return (
@@ -30,39 +30,36 @@ const SectionOurFeatures: FC<SectionOurFeaturesProps> = ({
         }`}
       >
         <span className="uppercase text-sm text-gray-400 tracking-widest">
-          BENnefits
+          AVANTAGES
         </span>
-        <h2 className="font-semibold text-4xl mt-5">Happening cities </h2>
+        <h2 className="font-semibold text-4xl mt-5">Pourquoi choisir RentiTool ?</h2>
 
         <ul className="space-y-10 mt-16">
           <li className="space-y-4">
-            <Badge name="Advertising" />
+            <Badge name="Variété" />
             <span className="block text-xl font-semibold">
-              Cost-effective advertising
+              Large choix d'outils
             </span>
             <span className="block mt-5 text-neutral-500 dark:text-neutral-400">
-              With a free listing, you can advertise your rental with no upfront
-              costs
+              Accédez à une vaste gamme d'outils de bricolage, jardinage et construction, disponibles près de chez vous.
             </span>
           </li>
           <li className="space-y-4">
-            <Badge color="green" name="Exposure " />
+            <Badge color="green" name="Sécurité" />
             <span className="block text-xl font-semibold">
-              Reach millions with Chisfis
+              Paiements sécurisés
             </span>
             <span className="block mt-5 text-neutral-500 dark:text-neutral-400">
-              Millions of people are searching for unique places to stay around
-              the world
+              Toutes les transactions sont protégées par notre plateforme, pour une tranquillité d'esprit totale.
             </span>
           </li>
           <li className="space-y-4">
-            <Badge color="red" name="Secure" />
+            <Badge color="red" name="Flexibilité" />
             <span className="block text-xl font-semibold">
-              Secure and simple
+              Location locale et flexible
             </span>
             <span className="block mt-5 text-neutral-500 dark:text-neutral-400">
-              A Holiday Lettings listing gives you a secure and easy way to take
-              bookings and payments online
+              Louez des outils pour la durée dont vous avez besoin, auprès de particuliers de votre quartier.
             </span>
           </li>
         </ul>
