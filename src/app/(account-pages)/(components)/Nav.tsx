@@ -10,9 +10,9 @@ export const Nav = () => {
 
   const listNav: Route[] = [
     "/account",
-    "/account-savelists",
+    "/account-savelists" as Route,
     "/account-password",
-    "/account-billing",
+    "/account-billing" as Route,
   ];
 
   return (
