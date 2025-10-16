@@ -204,3 +204,215 @@ export async function GET(
     return new NextResponse("Failed to fetch tool", { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params;
+  // Don't force number; let PG coerce when possible
+  const rawId: any = id;
+  try {
+    const envTable = process.env.TOOLS_TABLE?.trim();
+    const candidates = [
+      envTable,
+      'tools','Tools','public."Tools"','public.tools',
+      'tool','Tool','public."Tool"','public.tool',
+    ].filter(Boolean) as string[];
+
+    const parseIdent = (ident: string): { schema: string; table: string } => {
+      const defSchema = 'public';
+      if (ident.includes('.')) {
+        const [schemaRaw, tableRaw] = ident.split('.', 2);
+        const unquote = (s: string) => s.replace(/^"|"$/g, '');
+        return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
+      }
+      return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+    };
+
+    const tryResolve = async () => {
+      for (const cand of candidates) {
+        const { schema, table } = parseIdent(cand!);
+        const colsRes = await query(
+          `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`,
+          [schema, table]
+        );
+        if (colsRes.rows.length) {
+          return { schema, table };
+        }
+      }
+      return null;
+    };
+
+    const resolved = await tryResolve();
+    if (!resolved) {
+      return new NextResponse('Tools table not found. Set TOOLS_TABLE env.', { status: 500 });
+    }
+    const { schema, table } = resolved;
+
+    // Detect primary key
+    const pkRes = await query(
+      `SELECT kcu.column_name
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+       WHERE tc.table_schema = $1 AND tc.table_name = $2 AND tc.constraint_type = 'PRIMARY KEY'
+       ORDER BY kcu.ordinal_position`,
+      [schema, table]
+    );
+    const pkCol: string | undefined = pkRes.rows[0]?.column_name;
+    if (!pkCol) {
+      return new NextResponse('Primary key not found for tools table', { status: 500 });
+    }
+
+    const q = (s: string) => `"${s}"`;
+    const from = `${q(schema)}.${q(table)}`;
+    const sql = `DELETE FROM ${from} WHERE ${q(pkCol)} = $1`;
+    const res = await query(sql, [rawId]);
+    // res.rowCount is number of deleted rows for pg
+    return new NextResponse(null, { status: res.rowCount ? 204 : 404 });
+  } catch (err: any) {
+    console.error(`/api/tools/${id} DELETE error:`, err?.message || err);
+    return new NextResponse('Failed to delete tool', { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params;
+  try {
+    const body = await request.json().catch(() => ({}));
+    const {
+      title,
+      description,
+      brand,
+      model,
+      rentalPricePerDay,
+      rentalPricePerWeek,
+      categoryId,
+      subCategoryId,
+      ownerId,
+      isActive,
+      statusId,
+    } = body || {};
+
+    const envTable = process.env.TOOLS_TABLE?.trim();
+    const candidates = [
+      envTable,
+      'tools','Tools','public."Tools"','public.tools',
+      'tool','Tool','public."Tool"','public.tool',
+    ].filter(Boolean) as string[];
+
+    const parseIdent = (ident: string): { schema: string; table: string } => {
+      const defSchema = 'public';
+      if (ident.includes('.')) {
+        const [schemaRaw, tableRaw] = ident.split('.', 2);
+        const unquote = (s: string) => s.replace(/^"|"$/g, '');
+        return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
+      }
+      return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+    };
+
+    const tryResolve = async () => {
+      for (const cand of candidates) {
+        const { schema, table } = parseIdent(cand!);
+        const colsRes = await query(
+          `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`,
+          [schema, table]
+        );
+        if (colsRes.rows.length) {
+          return { schema, table, columns: colsRes.rows.map((r: any) => r.column_name as string) };
+        }
+      }
+      return null;
+    };
+
+    const resolved = await tryResolve();
+    if (!resolved) {
+      return new NextResponse('Tools table not found. Set TOOLS_TABLE env.', { status: 500 });
+    }
+    const { schema, table, columns } = resolved;
+    const lowerMap: Record<string, string> = Object.fromEntries(columns.map((c: string) => [c.toLowerCase(), c]));
+    const has = (names: string[]) => {
+      for (const n of names) {
+        const hit = lowerMap[n.toLowerCase()];
+        if (hit) return hit;
+      }
+      return undefined;
+    };
+
+    // Detect PK
+    const pkRes = await query(
+      `SELECT kcu.column_name
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+       WHERE tc.table_schema = $1 AND tc.table_name = $2 AND tc.constraint_type = 'PRIMARY KEY'
+       ORDER BY kcu.ordinal_position`,
+      [schema, table]
+    );
+    const pkCol: string | undefined = pkRes.rows[0]?.column_name;
+    if (!pkCol) {
+      return new NextResponse('Primary key not found for tools table', { status: 500 });
+    }
+
+    const colMap: Record<string, string | undefined> = {
+      title: has(['Title','title','Name','name']),
+      description: has(['Description','description','Details','details']),
+      brand: has(['Brand','brand']),
+      model: has(['Model','model']),
+      rentalPricePerDay: has(['RentalPricePerDay','rentalpriceperday','rental_price_per_day','DailyPrice','dailyprice','daily_price','Price','price']),
+      rentalPricePerWeek: has(['RentalPricePerWeek','rentalpriceperweek','rental_price_per_week']),
+      categoryId: has(['CategoryId','categoryid','category_id']),
+      subCategoryId: has(['SubCategoryId','subcategoryid','sub_category_id']),
+      ownerId: has(['OwnerId','ownerid','owner_id','UserId','userid','user_id']),
+      isActive: has(['IsActive','isactive','is_active','Active','active']),
+      statusId: has(['StatusId','statusid','status_id']),
+    };
+
+    const sets: string[] = [];
+    const values: any[] = [];
+    const q = (s: string) => `"${s}"`;
+    const addIf = (field: keyof typeof colMap, val: any) => {
+      const colName = colMap[field];
+      if (!colName) return;
+      if (val === undefined) return;
+      sets.push(`${q(colName)} = $${values.length + 1}`);
+      values.push(val);
+    };
+
+    addIf('title', title != null ? String(title).trim() : undefined);
+    addIf('description', description != null ? String(description).trim() : undefined);
+    addIf('brand', brand != null ? String(brand).trim() : undefined);
+    addIf('model', model != null ? String(model).trim() : undefined);
+    addIf('rentalPricePerDay', rentalPricePerDay != null ? Number(rentalPricePerDay) : undefined);
+    addIf('rentalPricePerWeek', rentalPricePerWeek != null ? Number(rentalPricePerWeek) : undefined);
+    addIf('categoryId', categoryId != null ? Number(categoryId) : undefined);
+    addIf('subCategoryId', subCategoryId != null ? Number(subCategoryId) : undefined);
+    if (ownerId !== undefined) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const ownerUuid = typeof ownerId === 'string' && uuidRegex.test(ownerId) ? ownerId : null;
+      if (ownerUuid === null) {
+        return new NextResponse('Invalid ownerId: must be a UUID string', { status: 400 });
+      }
+      addIf('ownerId', ownerUuid);
+    }
+    addIf('isActive', isActive != null ? Boolean(isActive) : undefined);
+    addIf('statusId', statusId != null ? Number(statusId) : undefined);
+
+    if (!sets.length) {
+      return new NextResponse('No updatable fields provided', { status: 400 });
+    }
+
+    const from = `${q(schema)}.${q(table)}`;
+    const sql = `UPDATE ${from} SET ${sets.join(', ')} WHERE ${q(pkCol)} = $${values.length + 1} RETURNING ${q(pkCol)}`;
+    const res = await query(sql, [...values, id]);
+    if (!res.rowCount) {
+      return new NextResponse('Tool not found', { status: 404 });
+    }
+    return NextResponse.json({ id: res.rows[0][pkCol] });
+  } catch (err: any) {
+    console.error(`/api/tools/${id} PUT error:`, err?.message || err);
+    return new NextResponse('Failed to update tool', { status: 500 });
+  }
+}

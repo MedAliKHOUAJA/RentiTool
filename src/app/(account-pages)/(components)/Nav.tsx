@@ -9,10 +9,11 @@ export const Nav = () => {
   const pathname = usePathname();
 
   const listNav: Route[] = [
-    "/account",
+    "/account" as Route,
     "/account-savelists" as Route,
-    "/account-password",
+    "/account-password" as Route,
     "/account-billing" as Route,
+    "/tools-management" as Route,
   ];
 
   return (
