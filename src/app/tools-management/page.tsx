@@ -196,15 +196,18 @@ const ToolsManagementPage = () => {
             <div className="py-6 text-neutral-500">You don't have any tools yet.</div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-            {myTools.map(tool => (
-              <ToolCard
-                key={tool.id}
-                data={tool}
-                onDelete={() => handleDelete(Number(tool.id))}
-                onEdit={() => router.push(`/tools-management/edit?id=${encodeURIComponent(String(tool.id))}` as any)}
-                showLike={false}
-              />
-            ))}
+            {myTools.map(tool => {
+              const ownerHref = `/owner-tool-detail?id=${encodeURIComponent(String(tool.id))}` as any;
+              return (
+                <ToolCard
+                  key={tool.id}
+                  data={{ ...tool, href: ownerHref }}
+                  onDelete={() => handleDelete(Number(tool.id))}
+                  onEdit={() => router.push(`/tools-management/edit?id=${encodeURIComponent(String(tool.id))}` as any)}
+                  showLike={false}
+                />
+              );
+            })}
           </div>
         </div>
       )}

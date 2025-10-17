@@ -26,6 +26,12 @@ const EditToolPage = () => {
   const [fkOptions, setFkOptions] = useState<Record<string, { valueType: 'number'|'string'; options: Array<{ value: any; label: string }> }>>({});
   const [filteredSubcats, setFilteredSubcats] = useState<Array<{ value: any; label: string }>>([]);
 
+  // Images state
+  type ImageItem = { id: string | number; url: string; isPrimary: boolean };
+  const [images, setImages] = useState<ImageItem[]>([]);
+  const [imgError, setImgError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     const run = async () => {
@@ -71,6 +77,23 @@ const EditToolPage = () => {
     run();
   }, [categoryId]);
 
+  // Load images for this tool
+  useEffect(() => {
+    const load = async () => {
+      if (!id) return;
+      try {
+        setImgError(null);
+        const res = await fetch(`/api/tools/${encodeURIComponent(id)}/images`);
+        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        setImages(Array.isArray(json.images) ? json.images : []);
+      } catch (e: any) {
+        setImgError(e?.message || 'Failed to load images');
+      }
+    };
+    load();
+  }, [id]);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
@@ -97,6 +120,61 @@ const EditToolPage = () => {
       setError(e?.message || 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Image handlers
+  const handleUpload = async (file: File) => {
+    if (!id || !file) return;
+    try {
+      setUploading(true);
+      setImgError(null);
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`/api/tools/${encodeURIComponent(id)}/images`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      // Reload images
+      const list = await fetch(`/api/tools/${encodeURIComponent(id)}/images`);
+      const json = await list.json();
+      setImages(Array.isArray(json.images) ? json.images : []);
+    } catch (e: any) {
+      setImgError(e?.message || 'Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteImage = async (imageId: string | number) => {
+    if (!id) return;
+    try {
+      setImgError(null);
+      const res = await fetch(`/api/tools/${encodeURIComponent(id)}/images/${encodeURIComponent(String(imageId))}`, { method: 'DELETE' });
+      if (res.status !== 204) {
+        if (!res.ok) throw new Error(await res.text());
+      }
+      // Refresh
+      const list = await fetch(`/api/tools/${encodeURIComponent(id)}/images`);
+      const json = await list.json();
+      setImages(Array.isArray(json.images) ? json.images : []);
+    } catch (e: any) {
+      setImgError(e?.message || 'Failed to delete image');
+    }
+  };
+
+  const handleSetPrimary = async (imageId: string | number) => {
+    if (!id) return;
+    try {
+      setImgError(null);
+      const res = await fetch(`/api/tools/${encodeURIComponent(id)}/images/${encodeURIComponent(String(imageId))}`, { method: 'PUT' });
+      if (res.status !== 204) {
+        if (!res.ok) throw new Error(await res.text());
+      }
+      // Refresh
+      const list = await fetch(`/api/tools/${encodeURIComponent(id)}/images`);
+      const json = await list.json();
+      setImages(Array.isArray(json.images) ? json.images : []);
+    } catch (e: any) {
+      setImgError(e?.message || 'Failed to set primary image');
     }
   };
 
@@ -161,6 +239,51 @@ const EditToolPage = () => {
                   </select>
                 </div>
               </div>
+            </div>
+
+            {/* IMAGES */}
+            <div className="listingSection__wrap rounded-3xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 lg:p-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold mb-6">Images</h2>
+                <label className="inline-flex items-center px-4 py-2 rounded-full bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 cursor-pointer hover:opacity-90">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e)=>{
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(file);
+                      // reset to allow re-select same file
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                  {uploading ? 'Uploading…' : 'Upload image'}
+                </label>
+              </div>
+              {imgError && <div className="mb-4 text-red-600">{imgError}</div>}
+              {images.length === 0 ? (
+                <div className="text-sm text-neutral-500">No images yet. Upload the first one.</div>
+              ) : (
+                <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {images.map((img) => (
+                    <li key={String(img.id)} className="relative group">
+                      <img src={img.url} alt="tool" className="w-full h-32 object-cover rounded-lg border border-neutral-200 dark:border-neutral-700" />
+                      {img.isPrimary && (
+                        <span className="absolute top-2 left-2 text-2xs bg-bleu-nuit text-white px-2 py-0.5 rounded-full">Primary</span>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 rounded-lg">
+                        <button type="button" onClick={() => handleSetPrimary(img.id)} className="px-3 py-1.5 text-xs rounded-full bg-white text-neutral-900 hover:opacity-90">
+                          Set primary
+                        </button>
+                        <button type="button" onClick={() => handleDeleteImage(img.id)} className="px-3 py-1.5 text-xs rounded-full bg-red-600 text-white hover:opacity-90">
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </form>
 

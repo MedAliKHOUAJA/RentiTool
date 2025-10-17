@@ -176,13 +176,64 @@ export async function GET(
         ? r.title
         : `Tool #${r.toolId}`;
 
-    const tool: ToolDataType = {
+    // Load images for this tool if available
+    let featuredImage = "/images/placeholder-large.png";
+    let galleryImgs: string[] = ["/images/placeholder-large.png"];
+    try {
+      const imagesEnv = process.env.IMAGES_TABLE?.trim();
+      const imgCandidates = [
+        imagesEnv,
+        'images', 'Images', 'public."Images"', 'public.images',
+        'image', 'Image', 'public."Image"', 'public.image'
+      ].filter(Boolean) as string[];
+      const parseIdent = (ident: string): { schema: string; table: string } => {
+        const defSchema = 'public';
+        if (ident.includes('.')) {
+          const [schemaRaw, tableRaw] = ident.split('.', 2);
+          const unquote = (s: string) => s.replace(/^"|"$/g, '');
+          return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
+        }
+        return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+      };
+      for (const cand of imgCandidates) {
+        const { schema: ischema, table: itable } = parseIdent(cand!);
+        const colsRes = await query(
+          `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`,
+          [ischema, itable]
+        );
+        if (!colsRes.rows.length) continue;
+        const icols: string[] = colsRes.rows.map((r:any)=>r.column_name);
+        const imap: Record<string,string> = Object.fromEntries(icols.map(c=>[c.toLowerCase(), c]));
+        const ipk = imap['imageid'] || imap['id'] || imap['image_id'];
+        const itool = imap['toolid'] || imap['tool_id'];
+        const iprimary = imap['isprimarytoolimage'] || imap['is_primary'] || imap['isprimary'];
+        if (!ipk || !itool) continue;
+        const qq = (s: string) => `"${s}"`;
+        const from = `${qq(ischema)}.${qq(itable)}`;
+        const order = iprimary ? `${qq(iprimary)} DESC, ${qq(ipk)} DESC` : `${qq(ipk)} DESC`;
+        const sqlImg = `SELECT ${qq(ipk)} as id${iprimary ? `, ${qq(iprimary)} as is_primary` : ''} FROM ${from} WHERE ${qq(itool)} = $1 ORDER BY ${order} LIMIT 20`;
+        const imgRes = await query(sqlImg, [toolId]);
+        if (imgRes.rows.length) {
+          const urls = imgRes.rows.map((row:any) => `/api/images/${row.id}`);
+          galleryImgs = urls;
+          featuredImage = urls[0];
+        }
+        break; // stop after first valid images table
+      }
+    } catch (e) {
+      // keep placeholders on failure
+      console.warn('Image load for single tool failed:', (e as any)?.message || e);
+    }
+
+    // Include ownerId in API response for client-side ownership checks
+    const tool: any = {
       id: r.toolId,
+      ownerId: r.ownerId ?? null,
       author,
       date: new Date().toISOString().slice(0, 10),
       href: `/listing-tool-detail?id=${r.toolId}` as Route,
       title,
-      featuredImage: "/images/placeholder-large.png",
+      featuredImage,
       desc: r.description ?? undefined,
       commentCount: 0,
       viewCount: 0,
@@ -190,7 +241,7 @@ export async function GET(
       reviewStart: 0,
       reviewCount: 0,
       like: false,
-      galleryImgs: ["/images/placeholder-large.png"],
+      galleryImgs,
       price: priceStr,
       listingCategory: category,
       saleOff: null,

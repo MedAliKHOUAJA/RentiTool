@@ -145,6 +145,7 @@ export interface CarDataType {
 //
 export interface ToolDataType {
   id: string | number;
+  ownerId?: string | null;
   author: AuthorType;
   date: string;
   href: Route<string>;

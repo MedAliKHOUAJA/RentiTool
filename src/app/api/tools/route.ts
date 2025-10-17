@@ -215,6 +215,42 @@ export async function GET(request: Request) {
       console.warn('SubCategory label join discovery failed, skipping');
     }
 
+    // Try to join images table to fetch primary image URL
+    try {
+      const imagesEnv = process.env.IMAGES_TABLE?.trim();
+      const imgCandidates = [imagesEnv, 'images','Images','public."Images"','public.images','image','Image','public."Image"','public.image'].filter(Boolean) as string[];
+      // Resolve images table
+      for (const cand of imgCandidates) {
+        const parseIdent = (ident: string): { schema: string; table: string } => {
+          const defSchema = 'public';
+          if (ident.includes('.')) { const [s,t] = ident.split('.',2); const unq=(x:string)=>x.replace(/^"|"$/g,''); return { schema: unq(s), table: unq(t) }; }
+          return { schema: 'public', table: ident.replace(/^"|"$/g,'') };
+        };
+        const { schema: ischema, table: itable } = parseIdent(cand!);
+        const colsRes = await query(`SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`, [ischema, itable]);
+        if (!colsRes.rows.length) continue;
+        const icols: string[] = colsRes.rows.map((r:any)=>r.column_name);
+        const imap: Record<string,string> = Object.fromEntries(icols.map(c=>[c.toLowerCase(), c]));
+        const ipk = imap['imageid'] || imap['id'] || imap['image_id'];
+        const itool = imap['toolid'] || imap['tool_id'];
+        const iprimary = imap['isprimarytoolimage'] || imap['is_primary'] || imap['isprimary'];
+        if (!ipk || !itool) continue;
+        // LATERAL subquery to pick preferred image id
+        const lateral = `LEFT JOIN LATERAL (
+          SELECT ${qq(ipk)} as img_id${iprimary ? `, ${qq(iprimary)} as is_primary` : ''}
+          FROM ${qq(ischema)}.${qq(itable)} i
+          WHERE i.${qq(itool)} = t.${qq(col.id!)}
+          ORDER BY ${iprimary ? `i.${qq(iprimary)} DESC,` : ''} i.${qq(ipk)} DESC
+          LIMIT 1
+        ) img ON true`;
+        joins.push(lateral);
+        extraSelects.push(`img.img_id as ${q('imageId')}`);
+        break;
+      }
+    } catch (e) {
+      console.warn('Image join discovery failed, skipping');
+    }
+
   const select = [selectParts.join(', '), ...extraSelects].filter(Boolean).join(', ');
   const from = `${qq(schema)}.${qq(table)} t`;
   const whereParts: string[] = [];
@@ -259,13 +295,15 @@ export async function GET(request: Request) {
             ? r.title
             : `Tool #${r.toolId}`;
 
+        const imageId: number | null = (r as any).imageId ?? null;
+        const featuredImage = imageId ? `/api/images/${imageId}` : "/images/placeholder-large.png";
         const tool: ToolDataType = {
           id: r.toolId,
           author,
           date: new Date().toISOString().slice(0, 10),
           href: `/listing-tool-detail?id=${r.toolId}` as Route,
           title,
-          featuredImage: "/images/placeholder-large.png",
+          featuredImage,
           desc: r.description ?? undefined,
           commentCount: 0,
           viewCount: 0,
