@@ -148,7 +148,16 @@ const ToolDetailPageContent = () => {
                     </div>
                   </div>
 
-                  <button onClick={handleBooking} className="mt-6 w-full py-3 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold hover:opacity-90 transition">Add to cart</button>
+                  <button
+                    onClick={handleBooking}
+                    className="mt-6 w-full py-3 rounded-full font-semibold
+                      bg-neutral-900 text-white hover:bg-neutral-800
+                      dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100
+            border border-transparent dark:border-neutral-300
+            transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-neutral-300 dark:focus:ring-neutral-600 active:translate-y-0"
+                  >
+                    Add to cart
+                  </button>
 
                   <div className="mt-5 flex items-center justify-between text-neutral-600 dark:text-neutral-300 text-sm">
                     <button className="inline-flex items-center gap-2 hover:underline">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import BgGlassmorphism from '@/components/BgGlassmorphism';
 import BackgroundSection from '@/components/BackgroundSection';
 import ToolCard from '@/components/Cards/ToolCard';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { ToolDataType } from '@/data/types';
 
 const ToolsManagementPage = () => {
@@ -92,13 +93,27 @@ const ToolsManagementPage = () => {
     refreshMine();
   }, [activeTab, ownerId]);
 
-  const handleDelete = async (toolId: number) => {
-    if (!confirm('Delete this tool? This action cannot be undone.')) return;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+  const askDelete = (toolId: number) => {
+    setPendingDeleteId(toolId);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (pendingDeleteId == null) return;
+    setConfirmLoading(true);
     try {
-      const res = await fetch(`/api/tools/${encodeURIComponent(String(toolId))}`, { method: 'DELETE' });
+      const res = await fetch(`/api/tools/${encodeURIComponent(String(pendingDeleteId))}`, { method: 'DELETE' });
       if (res.status === 204) {
+        setConfirmOpen(false);
+        setPendingDeleteId(null);
         await refreshMine();
       } else if (res.status === 404) {
+        setConfirmOpen(false);
+        setPendingDeleteId(null);
         alert('Tool not found. It may have been deleted already.');
         await refreshMine();
       } else {
@@ -107,6 +122,8 @@ const ToolsManagementPage = () => {
       }
     } catch (e: any) {
       alert(e?.message || 'Failed to delete tool');
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -158,6 +175,7 @@ const ToolsManagementPage = () => {
   };
 
   return (
+    <>
     <div className="nc-ToolsManagementPage container my-10 relative">
       <BgGlassmorphism className="absolute inset-x-0 md:top-10 xl:top-40 min-h-0 pl-20 py-24 flex overflow-hidden z-0 pointer-events-none" />
       <div className="relative py-8">
@@ -202,7 +220,7 @@ const ToolsManagementPage = () => {
                 <ToolCard
                   key={tool.id}
                   data={{ ...tool, href: ownerHref }}
-                  onDelete={() => handleDelete(Number(tool.id))}
+                  onDelete={() => askDelete(Number(tool.id))}
                   onEdit={() => router.push(`/tools-management/edit?id=${encodeURIComponent(String(tool.id))}` as any)}
                   showLike={false}
                 />
@@ -304,6 +322,17 @@ const ToolsManagementPage = () => {
         </div>
       )}
     </div>
+    <ConfirmDialog
+      open={confirmOpen}
+      loading={confirmLoading}
+      title="Delete tool"
+      description="Are you sure you want to delete this tool? This action cannot be undone."
+      confirmText="Delete"
+      cancelText="Cancel"
+      onCancel={() => { setConfirmOpen(false); setPendingDeleteId(null); }}
+      onConfirm={confirmDelete}
+    />
+    </>
   );
 };
 
