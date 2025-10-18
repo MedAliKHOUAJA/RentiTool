@@ -36,7 +36,7 @@ export function ReviewList({ reviews, loading, reviewType }: ReviewListProps) {
   return (
     <div className="space-y-6">
       {reviews.map((review) => (
-        <ReviewCard key={review.id} review={review} reviewType={reviewType} />
+        <ReviewCard key={review.ratingId} review={review} reviewType={reviewType} />
       ))}
     </div>
   );

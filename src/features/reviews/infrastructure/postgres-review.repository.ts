@@ -1,28 +1,36 @@
-import { Review, CreateReviewDto } from "@/features/reviews/types";
+import { Review, CreateReviewDto, FeelingTypeReverseMap, mapDbSentimentToUI } from "@/features/reviews/types";
 import { ReviewRepository } from "@/features/reviews/domain/review.repository";
 import { db } from "@/app/lib/postgres";
 
 export class PostgresReviewRepository implements ReviewRepository {
   async create(reviewData: CreateReviewDto): Promise<Review> {
     const {
-      bookingId,
-      toolId,
-      revieweeId,
-      rating,
+      rentalId,
+      raterId,
+      ratedToolId,
+      ratedUserId,
+      ratedEntityTypeId,
       communication,
-      toolCondition,
-      punctuality,
+      toolStatus,
+      ponctuality,
+      fiability,
       comment,
-    } = reviewData;
-
-    // Determine RatedEntityTypeId based on whether it's a tool or user review
-    // Assuming 1 for tool, 3 for user (from db.txt RatedEntityType)
-    const ratedEntityTypeId = toolId ? 1 : 3;
-    const ratedToolId = toolId || null; // Set to null if not a tool review
-    const ratedUserId = revieweeId || null; // Set to null if not a user review
+      // Sentiment data from Azure (optional)
+      feelingTypeId,
+      feelingScorePositive,
+      feelingScoreNegative,
+      feelingScoreNeutral,
+      feelingScoreMixed,
+    } = reviewData as CreateReviewDto & {
+      feelingTypeId?: number;
+      feelingScorePositive?: number;
+      feelingScoreNegative?: number;
+      feelingScoreNeutral?: number;
+      feelingScoreMixed?: number;
+    };
 
     const query = `
-      INSERT INTO "public"."Ratings" (
+      INSERT INTO "Ratings" (
         "RentalId",
         "RaterId",
         "RatedUserId",
@@ -31,46 +39,252 @@ export class PostgresReviewRepository implements ReviewRepository {
         "Ponctuality",
         "Fiability",
         "Comment",
+        "FeelingTypeId",
+        "FeelingScorePositive",
+        "FeelingScoreNegative",
+        "FeelingScoreNeutral",
+        "FeelingScoreMixed",
         "RatedEntityTypeId",
         "RatedToolId",
         "CreatedAt"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
       RETURNING *;
     `;
 
-    // Placeholder for RaterId - this should come from the authenticated user
-    const raterId = "420430c2-0338-4612-aa74-65f0a82900fe"; // TODO: Replace with actual authenticated user ID
-
     const values = [
-      bookingId,
+      rentalId,
       raterId,
-      ratedUserId,
-      communication,
-      toolCondition,
-      punctuality,
-      rating,
+      ratedUserId || null,
+      communication || null,
+      toolStatus || null,
+      ponctuality || null,
+      fiability || null,
       comment,
+      feelingTypeId || null,
+      feelingScorePositive || null,
+      feelingScoreNegative || null,
+      feelingScoreNeutral || null,
+      feelingScoreMixed || null,
       ratedEntityTypeId,
-      ratedToolId,
+      ratedToolId || null,
     ];
 
     const result = await db.query(query, values);
     const newReview = result.rows[0];
 
-    return {
-      id: newReview.RatingId,
-      bookingId: newReview.RentalId,
-      toolId: newReview.RatedToolId,
+    // Fetch reviewer information
+    const reviewerQuery = `
+      SELECT "userId", "FirstName", "LastName"
+      FROM "User"
+      WHERE "userId" = $1
+    `;
+    const reviewerResult = await db.query(reviewerQuery, [newReview.RaterId]);
+    const reviewer = reviewerResult.rows[0];
+
+    // Map database result to Review type
+    const review: Review = {
+      ratingId: newReview.RatingId,
+      rentalId: newReview.RentalId,
+      raterId: newReview.RaterId,
+      ratedUserId: newReview.RatedUserId || undefined,
+      ratedToolId: newReview.RatedToolId || undefined,
+      ratedEntityTypeId: newReview.RatedEntityTypeId,
       reviewer: {
         id: newReview.RaterId,
-        name: "Unknown Reviewer", // TODO: Fetch reviewer name
+        name: reviewer 
+          ? `${reviewer.FirstName} ${reviewer.LastName}` 
+          : "Utilisateur inconnu",
       },
-      rating: newReview.Fiability,
       communication: newReview.Communication,
-      toolCondition: newReview.ToolStatus,
-      punctuality: newReview.Ponctuality,
+      toolStatus: newReview.ToolStatus,
+      ponctuality: newReview.Ponctuality,
+      fiability: newReview.Fiability,
       comment: newReview.Comment,
+      feelingTypeId: newReview.FeelingTypeId,
+      feelingScorePositive: newReview.FeelingScorePositive,
+      feelingScoreNegative: newReview.FeelingScoreNegative,
+      feelingScoreNeutral: newReview.FeelingScoreNeutral,
+      feelingScoreMixed: newReview.FeelingScoreMixed,
       createdAt: newReview.CreatedAt,
     };
+
+    // Map sentiment data for UI
+    review.sentiment = mapDbSentimentToUI(review);
+
+    return review;
+  }
+
+  async findByToolId(toolId: string): Promise<Review[]> {
+    const query = `
+      SELECT 
+        r."RatingId",
+        r."RentalId",
+        r."RaterId",
+        r."RatedUserId",
+        r."RatedToolId",
+        r."RatedEntityTypeId",
+        r."Communication",
+        r."ToolStatus",
+        r."Ponctuality",
+        r."Fiability",
+        r."Comment",
+        r."FeelingTypeId",
+        r."FeelingScorePositive",
+        r."FeelingScoreNegative",
+        r."FeelingScoreNeutral",
+        r."FeelingScoreMixed",
+        r."CreatedAt",
+        u."FirstName",
+        u."LastName",
+        u."userId"
+      FROM "Ratings" r
+      LEFT JOIN "User" u ON r."RaterId" = u."userId"
+      WHERE r."RatedToolId" = $1 AND r."RatedEntityTypeId" = 1
+      ORDER BY r."CreatedAt" DESC;
+    `;
+
+    const result = await db.query(query, [toolId]);
+    return this.mapRowsToReviews(result.rows);
+  }
+
+  async findByUserId(userId: string): Promise<Review[]> {
+    const query = `
+      SELECT 
+        r."RatingId",
+        r."RentalId",
+        r."RaterId",
+        r."RatedUserId",
+        r."RatedToolId",
+        r."RatedEntityTypeId",
+        r."Communication",
+        r."ToolStatus",
+        r."Ponctuality",
+        r."Fiability",
+        r."Comment",
+        r."FeelingTypeId",
+        r."FeelingScorePositive",
+        r."FeelingScoreNegative",
+        r."FeelingScoreNeutral",
+        r."FeelingScoreMixed",
+        r."CreatedAt",
+        u."FirstName",
+        u."LastName",
+        u."userId"
+      FROM "Ratings" r
+      LEFT JOIN "User" u ON r."RaterId" = u."userId"
+      WHERE r."RatedUserId" = $1 AND r."RatedEntityTypeId" IN (2, 3)
+      ORDER BY r."CreatedAt" DESC;
+    `;
+
+    const result = await db.query(query, [userId]);
+    return this.mapRowsToReviews(result.rows);
+  }
+
+  async findByRentalId(rentalId: number): Promise<Review[]> {
+    const query = `
+      SELECT 
+        r."RatingId",
+        r."RentalId",
+        r."RaterId",
+        r."RatedUserId",
+        r."RatedToolId",
+        r."RatedEntityTypeId",
+        r."Communication",
+        r."ToolStatus",
+        r."Ponctuality",
+        r."Fiability",
+        r."Comment",
+        r."FeelingTypeId",
+        r."FeelingScorePositive",
+        r."FeelingScoreNegative",
+        r."FeelingScoreNeutral",
+        r."FeelingScoreMixed",
+        r."CreatedAt",
+        u."FirstName",
+        u."LastName",
+        u."userId"
+      FROM "Ratings" r
+      LEFT JOIN "User" u ON r."RaterId" = u."userId"
+      WHERE r."RentalId" = $1
+      ORDER BY r."CreatedAt" DESC;
+    `;
+
+    const result = await db.query(query, [rentalId]);
+    return this.mapRowsToReviews(result.rows);
+  }
+
+  async findById(ratingId: number): Promise<Review | null> {
+    const query = `
+      SELECT 
+        r."RatingId",
+        r."RentalId",
+        r."RaterId",
+        r."RatedUserId",
+        r."RatedToolId",
+        r."RatedEntityTypeId",
+        r."Communication",
+        r."ToolStatus",
+        r."Ponctuality",
+        r."Fiability",
+        r."Comment",
+        r."FeelingTypeId",
+        r."FeelingScorePositive",
+        r."FeelingScoreNegative",
+        r."FeelingScoreNeutral",
+        r."FeelingScoreMixed",
+        r."CreatedAt",
+        u."FirstName",
+        u."LastName",
+        u."userId"
+      FROM "Ratings" r
+      LEFT JOIN "User" u ON r."RaterId" = u."userId"
+      WHERE r."RatingId" = $1
+      LIMIT 1;
+    `;
+
+    const result = await db.query(query, [ratingId]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const reviews = this.mapRowsToReviews(result.rows);
+    return reviews[0];
+  }
+
+  private mapRowsToReviews(rows: any[]): Review[] {
+    return rows.map((row) => {
+      const review: Review = {
+        ratingId: row.RatingId,
+        rentalId: row.RentalId,
+        raterId: row.RaterId,
+        ratedUserId: row.RatedUserId || undefined,
+        ratedToolId: row.RatedToolId || undefined,
+        ratedEntityTypeId: row.RatedEntityTypeId,
+        reviewer: {
+          id: row.userId,
+          name: row.FirstName && row.LastName 
+            ? `${row.FirstName} ${row.LastName}` 
+            : "Utilisateur inconnu",
+          avatar: undefined, // TODO: Add avatar if available
+        },
+        communication: row.Communication,
+        toolStatus: row.ToolStatus,
+        ponctuality: row.Ponctuality,
+        fiability: row.Fiability,
+        comment: row.Comment,
+        feelingTypeId: row.FeelingTypeId,
+        feelingScorePositive: row.FeelingScorePositive,
+        feelingScoreNegative: row.FeelingScoreNegative,
+        feelingScoreNeutral: row.FeelingScoreNeutral,
+        feelingScoreMixed: row.FeelingScoreMixed,
+        createdAt: row.CreatedAt,
+      };
+
+      // Map sentiment data for UI
+      review.sentiment = mapDbSentimentToUI(review);
+
+      return review;
+    });
   }
 }

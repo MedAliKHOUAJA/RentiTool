@@ -12,37 +12,240 @@ import ModalSelectDate from '@/components/ModalSelectDate';
 // 🆕 IMPORTS REVIEWS
 import { ReviewList } from '@/features/reviews/components/ReviewList';
 import { ReviewStats } from '@/features/reviews/components/ReviewStats';
-
 import { WriteReviewModal } from '@/features/reviews/components/WriteReviewModal';
+import { getMainRating } from '@/features/reviews/types';
 
 const ToolDetailPageContent = () => {
+  console.log('🟢 [START] Composant listing-tool-detail chargé');
+  
   const searchParams = useSearchParams();
   const toolId = searchParams.get('id');
+  console.log('🟢 [INIT] toolId depuis URL:', toolId);
+  
   const [toolDetails, setToolDetails] = useState<ToolDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  const [currentUser, setCurrentUser] = useState<{ userId: string } | null>(null);
+  const [activeRentalId, setActiveRentalId] = useState<number | null>(null);
 
   const fetchTool = useCallback(async () => {
-    if (!toolId) return;
+    console.log('🟢 [FETCH] === DÉBUT FETCH ===');
+    console.log('🟢 [FETCH] toolId à fetcher:', toolId);
+    
+    if (!toolId) {
+      console.log('🔴 [FETCH] Pas de toolId, abandon fetch');
+      return;
+    }
+    
     try {
       setLoading(true);
-      const response = await fetch(`/api/tools/${toolId}`);
-      if (!response.ok) throw new Error('Tool not found');
+      const url = `/api/tools/${toolId}`;
+      console.log('🟢 [FETCH] URL appelée:', url);
+      
+      const response = await fetch(url);
+      console.log('🟢 [FETCH] Réponse reçue, status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        console.error('🔴 [FETCH] Erreur HTTP:', response.status);
+        throw new Error('Tool not found');
+      }
+      
       const data = await response.json();
+      console.log('🟢 [FETCH] ===== DATA COMPLÈTE =====');
+      console.log('🟢 [FETCH] Données brutes:', data);
+      console.log('🟢 [FETCH] title:', data.title);
+      console.log('🟢 [FETCH] toolReviews:', data.toolReviews);
+      console.log('🟢 [FETCH] toolReviews.length:', data.toolReviews?.length);
+      console.log('🟢 [FETCH] ownerReviews:', data.ownerReviews);
+      console.log('🟢 [FETCH] ownerReviews.length:', data.ownerReviews?.length);
+      console.log('🟢 [FETCH] === FIN DATA ===');
+      
       setToolDetails(data);
+      console.log('🟢 [FETCH] toolDetails mis à jour dans le state');
+      
     } catch (err: any) {
+      console.error('🔴 [FETCH] Exception attrapée:', err);
+      console.error('🔴 [FETCH] Message:', err.message);
+      console.error('🔴 [FETCH] Stack:', err.stack);
       setError(err.message);
     } finally {
       setLoading(false);
+      console.log('🟢 [FETCH] === FIN FETCH ===');
     }
   }, [toolId]);
 
   useEffect(() => {
+    console.log('🟢 [EFFECT] Initialisation user et rental');
+    setCurrentUser({ userId: "420430c2-0338-4612-aa74-65f0a82900fe" });
+    setActiveRentalId(1);
+    console.log('🟢 [EFFECT] User et rental initialisés');
+  }, []);
+
+  useEffect(() => {
+    console.log('🟢 [EFFECT] useEffect fetchTool déclenché');
     fetchTool();
   }, [fetchTool]);
+
+  console.log('🟢 [RENDER] === DÉBUT RENDER ===');
+  console.log('🟢 [RENDER] loading:', loading);
+  console.log('🟢 [RENDER] error:', error);
+  console.log('🟢 [RENDER] toolDetails:', toolDetails ? 'existe' : 'null');
+
+  if (loading) {
+    console.log('🟡 [RENDER] Retour loading...');
+    return <div className="container py-10">Chargement...</div>;
+  }
+  
+  if (error) {
+    console.log('🔴 [RENDER] Retour erreur:', error);
+    return <div className="container py-10">Erreur: {error}</div>;
+  }
+  
+  if (!toolDetails) {
+    console.log('🔴 [RENDER] Pas de toolDetails');
+    return <div className="container py-10">Outil non trouvé.</div>;
+  }
+
+  console.log('🟢 [RENDER] Passage des conditions, destructuration...');
+  
+  const { 
+    title, 
+    description, 
+    owner, 
+    toolReviews, 
+    ownerReviews, 
+    rentalPricePerDay, 
+    imageUrl 
+  } = toolDetails;
+
+  console.log('🟢 [DATA] === DONNÉES DESTRUCTURÉES ===');
+  console.log('🟢 [DATA] title:', title);
+  console.log('🟢 [DATA] toolReviews:', toolReviews);
+  console.log('🟢 [DATA] toolReviews est un tableau?', Array.isArray(toolReviews));
+  console.log('🟢 [DATA] toolReviews.length:', toolReviews?.length || 0);
+  
+  if (toolReviews && toolReviews.length > 0) {
+    console.log('🟢 [DATA] Premier review:', toolReviews[0]);
+  }
+
+  // ✅ Calcul des statistiques TOOL
+  console.log('🟡 [STATS] ======= CALCUL TOOL STATS =======');
+  const toolStats = (() => {
+    if (!toolReviews || toolReviews.length === 0) {
+      console.log('🟡 [STATS] Pas de tool reviews, stats vides');
+      return {
+        averageRating: 0,
+        totalReviews: 0,
+        distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      };
+    }
+
+    console.log('🟡 [STATS] Nombre de reviews à traiter:', toolReviews.length);
+    
+    const ratings = toolReviews.map((review, index) => {
+      console.log(`\n🟡 [STATS] === Review ${index + 1}/${toolReviews.length} ===`);
+      console.log('🟡 [STATS]   ratingId:', review.ratingId);
+      console.log('🟡 [STATS]   toolStatus:', review.toolStatus);
+      console.log('🟡 [STATS]   fiability:', review.fiability);
+      console.log('🟡 [STATS]   ratedEntityTypeId:', review.ratedEntityTypeId);
+      
+      try {
+        const rating = getMainRating(review);
+        console.log('🟡 [STATS]   → mainRating:', rating);
+        console.log('🟡 [STATS]   → arrondi:', Math.round(rating));
+        return rating;
+      } catch (error) {
+        console.error('🔴 [STATS]   ❌ Erreur getMainRating:', error);
+        return 0;
+      }
+    });
+
+    console.log('🟡 [STATS] Tous les ratings:', ratings);
+    
+    const sum = ratings.reduce((acc, r) => acc + r, 0);
+    console.log('🟡 [STATS] Somme des ratings:', sum);
+    
+    const averageRating = sum / ratings.length;
+    console.log('🟡 [STATS] Moyenne calculée:', averageRating);
+
+    const distribution: { 1: number; 2: number; 3: number; 4: number; 5: number } = {
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0
+    };
+
+    ratings.forEach((rating, index) => {
+      const rounded = Math.round(rating);
+      console.log(`🟡 [STATS] Distribution: rating ${rating} → arrondi ${rounded}`);
+      
+      if (rounded >= 1 && rounded <= 5) {
+        distribution[rounded as 1 | 2 | 3 | 4 | 5]++;
+      } else {
+        console.warn('🟠 [STATS] Rating hors limites:', rounded);
+      }
+    });
+
+    console.log('🟡 [STATS] Distribution finale:', distribution);
+
+    const result = {
+      averageRating,
+      totalReviews: toolReviews.length,
+      distribution,
+    };
+    
+    console.log('🟡 [STATS] ====== RÉSULTAT TOOL STATS ======');
+    console.log('🟡 [STATS]', result);
+    
+    return result;
+  })();
+
+  console.log('🟢 [STATS] toolStats FINAL stocké:', toolStats);
+
+  // ✅ Calcul des statistiques OWNER
+  console.log('🟡 [STATS] === CALCUL OWNER STATS ===');
+  const ownerStats = (() => {
+    if (!ownerReviews || ownerReviews.length === 0) {
+      console.log('🟡 [STATS] Pas de owner reviews');
+      return {
+        averageRating: 0,
+        totalReviews: 0,
+        distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      };
+    }
+
+    const ratings = ownerReviews.map(review => getMainRating(review));
+    const averageRating = ratings.reduce((acc, r) => acc + r, 0) / ratings.length;
+
+    const distribution: { 1: number; 2: number; 3: number; 4: number; 5: number } = {
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0
+    };
+
+    ratings.forEach(rating => {
+      const rounded = Math.round(rating);
+      if (rounded >= 1 && rounded <= 5) {
+        distribution[rounded as 1 | 2 | 3 | 4 | 5]++;
+      }
+    });
+
+    return {
+      averageRating,
+      totalReviews: ownerReviews.length,
+      distribution,
+    };
+  })();
+
+  console.log('🟢 [STATS] ownerStats FINAL:', ownerStats);
+
+  const reviewStart = toolStats.averageRating;
+  const reviewCount = toolStats.totalReviews;
+  const canLeaveReview = currentUser && activeRentalId;
+
+  console.log('🟢 [DISPLAY] Variables pour affichage:');
+  console.log('🟢 [DISPLAY]   reviewStart:', reviewStart);
+  console.log('🟢 [DISPLAY]   reviewCount:', reviewCount);
+  console.log('🟢 [DISPLAY]   canLeaveReview:', canLeaveReview);
+  console.log('🟢 [RENDER] === FIN RENDER, début JSX ===');
 
   const handleBooking = async () => {
     if (!toolId || !selectedStartDate || !selectedEndDate || !quantity) {
@@ -74,47 +277,11 @@ const ToolDetailPageContent = () => {
     }
   };
 
-  if (loading) return <div className="container py-10">Chargement...</div>;
-  if (error) return <div className="container py-10">Erreur: {error}</div>;
-  if (!toolDetails) return <div className="container py-10">Outil non trouvé.</div>;
-
-  const { 
-    title, 
-    description, 
-    owner, 
-    toolReviews, 
-    ownerReviews, 
-    rentalPricePerDay, 
-    imageUrl 
-  } = toolDetails;
-
-  const reviewStart = toolReviews.length > 0 ? toolReviews.reduce((acc, review) => acc + review.rating, 0) / toolReviews.length : 0;
-  const reviewCount = toolReviews.length;
-
-  const stats = {
-    averageRating: reviewStart,
-    totalReviews: reviewCount,
-    distribution: {
-      1: 0,
-      2: 0,
-      3: 0,
-      4: 0,
-      5: 0,
-    },
-  };
-
-  if (toolReviews) {
-    for (const review of toolReviews) {
-      stats.distribution[review.rating as keyof typeof stats.distribution]++;
-    }
-  }
-
   return (
     <div className="nc-ListingDetailPage">
       <GallerySlider 
         galleryImgs={imageUrl ? [imageUrl] : []}
         className="max-w-screen-xl mx-auto rounded-3xl"
-
       />
 
       <div className="container mt-10">
@@ -125,8 +292,12 @@ const ToolDetailPageContent = () => {
               <h1 className="text-2xl font-semibold md:text-3xl">{title}</h1>
               <div className="flex items-center space-x-4">
                 <StartRating reviewCount={reviewCount} point={reviewStart} />
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">({reviewCount} avis)</span>
-                <span className="block text-neutral-500 dark:text-neutral-400">{owner.locationId}</span>
+                <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                  ({reviewCount} avis)
+                </span>
+                <span className="block text-neutral-500 dark:text-neutral-400">
+                  {owner.locationId}
+                </span>
               </div>
             </div>
 
@@ -144,30 +315,70 @@ const ToolDetailPageContent = () => {
               <CardAuthorBox author={owner} />
             </div>
 
-            {/* 🆕 REVIEWS SECTION */}
+            {/* REVIEWS - OUTIL */}
             <div className="listingSection__wrap">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold">Avis sur l'outil</h2>
-                <WriteReviewModal toolId={toolId || ""} ownerId={owner.userId} reviewType="tool" onReviewSubmitted={fetchTool} />
+                
+                {canLeaveReview ? (
+                  <WriteReviewModal 
+                    rentalId={activeRentalId!}
+                    raterId={currentUser!.userId}
+                    ratedToolId={toolId || undefined}
+                    ratedUserId={undefined}
+                    ratedEntityTypeId={1}
+                    onReviewSubmitted={fetchTool} 
+                  />
+                ) : (
+                  <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Louez cet outil pour laisser un avis
+                  </div>
+                )}
               </div>
               
-              {/* Stats */}
-              {stats && (
+              {toolStats.totalReviews > 0 && (
                 <div className="mb-8">
-                  <ReviewStats stats={stats} />
+                  <ReviewStats stats={toolStats} />
                 </div>
               )}
               
-              {/* List */}
-              <ReviewList reviews={toolReviews || []} reviewType="tool" />
+              <ReviewList 
+                reviews={toolReviews || []} 
+                reviewType="tool"
+              />
             </div>
 
+            {/* REVIEWS - PROPRIÉTAIRE */}
             <div className="listingSection__wrap">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold">Avis sur le propriétaire</h2>
-                <WriteReviewModal toolId={toolId || ""} ownerId={owner.userId} reviewType="owner" onReviewSubmitted={fetchTool} />
+                
+                {canLeaveReview ? (
+                  <WriteReviewModal 
+                    rentalId={activeRentalId!}
+                    raterId={currentUser!.userId}
+                    ratedToolId={undefined}
+                    ratedUserId={owner.userId}
+                    ratedEntityTypeId={3}
+                    onReviewSubmitted={fetchTool} 
+                  />
+                ) : (
+                  <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Louez cet outil pour laisser un avis
+                  </div>
+                )}
               </div>
-              <ReviewList reviews={ownerReviews || []} reviewType="owner" />
+              
+              {ownerStats.totalReviews > 0 && (
+                <div className="mb-8">
+                  <ReviewStats stats={ownerStats} />
+                </div>
+              )}
+              
+              <ReviewList 
+                reviews={ownerReviews || []} 
+                reviewType="owner"
+              />
             </div>
           </div>
 
@@ -183,10 +394,13 @@ const ToolDetailPageContent = () => {
               <div className="mt-6">
                 <ModalSelectDate 
                   renderChildren={({ openModal }) => (
-                    <button onClick={openModal} className="w-full flex justify-between items-center px-4 py-3 border border-neutral-200 dark:border-neutral-700 rounded-full">
-                      <span>
+                    <button 
+                      onClick={openModal} 
+                      className="w-full flex justify-between items-center px-4 py-3 border border-neutral-200 dark:border-neutral-700 rounded-full hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                    >
+                      <span className="text-sm">
                         {selectedStartDate && selectedEndDate 
-                          ? `${selectedStartDate.toLocaleDateString()} - ${selectedEndDate.toLocaleDateString()}` 
+                          ? `${selectedStartDate.toLocaleDateString('fr-FR')} - ${selectedEndDate.toLocaleDateString('fr-FR')}` 
                           : "Sélectionner les dates"}
                       </span>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -202,15 +416,29 @@ const ToolDetailPageContent = () => {
               </div>
 
               <div className="mt-4">
-                <NcInputNumber label="Quantité" defaultValue={1} max={5} onChange={setQuantity} />
+                <NcInputNumber 
+                  label="Quantité" 
+                  defaultValue={1} 
+                  max={5} 
+                  onChange={setQuantity} 
+                />
               </div>
 
               <button 
                 onClick={handleBooking}
-                className="mt-6 w-full bg-jaune-industriel text-bleu-nuit font-semibold py-3 rounded-full hover:bg-jaune-industriel/90 transition-colors"
+                disabled={!selectedStartDate || !selectedEndDate}
+                className="mt-6 w-full bg-jaune-industriel text-bleu-nuit font-semibold py-3 rounded-full hover:bg-jaune-industriel/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Réserver
               </button>
+
+              {!canLeaveReview && (
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    💡 Vous pourrez laisser un avis après avoir loué cet outil
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -221,7 +449,7 @@ const ToolDetailPageContent = () => {
 
 const ToolDetailPage = () => {
   return (
-    <Suspense fallback={<div>Chargement de la page de détail...</div>}>
+    <Suspense fallback={<div className="container py-10">Chargement...</div>}>
       <ToolDetailPageContent />
     </Suspense>
   );
