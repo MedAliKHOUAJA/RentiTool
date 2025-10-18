@@ -1,14 +1,28 @@
 import React from "react";
-import { DEMO_TOOL_LISTINGS } from "@/data/listings";
 import ToolCard from "@/components/Cards/ToolCard";
 import BgGlassmorphism from "@/components/BgGlassmorphism";
-
 import SectionGridCategoryBox from "@/components/SectionGridCategoryBox";
 import { DEMO_TOOL_CATEGORIES } from "@/data/taxonomies";
 import SectionHowItWork from "@/components/SectionHowItWork";
 import SectionOurFeatures from "@/components/SectionOurFeatures";
+import { ToolDataType } from "@/data/types";
 
-function PageHome() {
+async function getTools() {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tools?limit=8`, { cache: 'no-store' });
+    if (!res.ok) {
+      return [];
+    }
+    return res.json();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+async function PageHome() {
+  const tools: ToolDataType[] = await getTools();
+
   return (
     <main className="nc-PageHome relative overflow-hidden">
       <BgGlassmorphism />
@@ -54,9 +68,13 @@ function PageHome() {
                     <a href="/tools" className="text-jaune-industriel font-semibold hover:underline">Voir tout</a>
                 </div>
                 <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {DEMO_TOOL_LISTINGS.map((tool) => (
-                        <ToolCard key={tool.id} data={tool} />
-                    ))}
+                    {tools && tools.length > 0 ? (
+                        tools.map((tool) => (
+                            <ToolCard key={tool.id} data={tool} />
+                        ))
+                    ) : (
+                        <p>Aucun outil à afficher pour le moment.</p>
+                    )}
                 </div>
             </div>
         </div>

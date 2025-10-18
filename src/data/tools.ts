@@ -11,6 +11,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     href: "/listing-stay-detail" as Route,
     title: "Perceuse-visseuse sans fil",
     featuredImage: "/images/placeholder-large.png",
+    galleryImgs: ["/images/placeholder-large.png"],
     commentCount: 28,
     viewCount: 120,
     address: "Paris, France",
@@ -20,6 +21,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     price: "15€/jour",
     listingCategory: DEMO_STAY_CATEGORIES[0],
     isAds: null,
+    date: "May 20, 2024",
     map: { lat: 48.8566, lng: 2.3522 },
   },
   {
@@ -28,6 +30,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     href: "/listing-stay-detail" as Route,
     title: "Scie circulaire professionnelle",
     featuredImage: "/images/placeholder-large.png",
+    galleryImgs: ["/images/placeholder-large.png"],
     commentCount: 10,
     viewCount: 250,
     address: "Lyon, France",
@@ -37,6 +40,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     price: "25€/jour",
     listingCategory: DEMO_STAY_CATEGORIES[1],
     isAds: true,
+    date: "May 20, 2024",
     map: { lat: 45.7640, lng: 4.8357 },
   },
   {
@@ -45,6 +49,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     href: "/listing-stay-detail" as Route,
     title: "Nettoyeur haute pression Kärcher",
     featuredImage: "/images/placeholder-large.png",
+    galleryImgs: ["/images/placeholder-large.png"],
     commentCount: 5,
     viewCount: 95,
     address: "Marseille, France",
@@ -54,6 +59,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     price: "30€/jour",
     listingCategory: DEMO_STAY_CATEGORIES[2],
     isAds: null,
+    date: "May 20, 2024",
     map: { lat: 43.2965, lng: 5.3698 },
   },
   {
@@ -62,6 +68,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     href: "/listing-stay-detail" as Route,
     title: "Tondeuse à gazon électrique",
     featuredImage: "/images/placeholder-large.png",
+    galleryImgs: ["/images/placeholder-large.png"],
     commentCount: 42,
     viewCount: 340,
     address: "Lille, France",
@@ -71,6 +78,7 @@ const DEMO_TOOLS_LISTINGS: ToolDataType[] = [
     price: "20€/jour",
     listingCategory: DEMO_STAY_CATEGORIES[3],
     isAds: null,
+    date: "May 20, 2024",
     map: { lat: 50.6292, lng: 3.0573 },
   },
 ];

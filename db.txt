@@ -1,0 +1,26 @@
+User
+"userId", 			"FirstName", "LastName", "Email", 	"Phone", 	"Password", 	"RoleId", "LocationId"
+"420430c2-0338-4612-aa74-65f0a82900fe"	"x"	"y"	"x.y@esprit.tn"	25879541	"azert123*"		 2	1
+
+"e8024f7a-33de-4c83-8907-68d3a45a07ab"	"t"	"b"	"t@gmail.com"	26147852	"qsdf123*" 		2	1
+
+
+
+Tools 
+"Toolid", "Ownerid", "Title", "Description", 			"CategoryId", "SubCategoryId", "Brand", "Model", "RentalPricePerDay", "RentalPricePerWeek", "IsActive", "StatusId"
+"Perceuse électrique"	"Perceuse sans fil, batterie lithium"		1	2		"Bosch"	"X1000"		15.00			90.00		true	1
+"Scie circulaire"	"Scie circulaire électrique 2000W avec guide laser"	3	5	"Makita""SC2000"	20.00		120.00			true	2
+
+Rentals
+"RentalId", 	"ToolId", 	"OwnerId", 				"RenterId", 				"TotalPrice", "RentalDateStart", 	"RentalDateEnd", "StatusId"
+1		1	"420430c2-0338-4612-aa74-65f0a82900fe"	"e8024f7a-33de-4c83-8907-68d3a45a07ab"		  120.00		"2025-10-20"	"2025-10-27"		4
+
+
+Ratings
+"RatingId", "RentalId", "RaterId", "RatedUserId", "Communication", "ToolStatus", "Ponctuality", "Fiability", "Comment", "FeelingTypeId", "FeelingScorePositive", "FeelingScoreNegative", "FeelingScoreNeutral", "FeelingScoreMixed", "RatedEntityTypeId", "RatedToolId", "CreatedAt"
+2	1	"420430c2-0338-4612-aa74-65f0a82900fe"	"e8024f7a-33de-4c83-8907-68d3a45a07ab"	4		5	4	"Très bonne communication, fiable et ponctuel."	1	0.7	0.1	0.1	0.1	3		"2025-10-15"
+3	1	"420430c2-0338-4612-aa74-65f0a82900fe"	"e8024f7a-33de-4c83-8907-68d3a45a07ab"	4	5	5	5	"Outil en excellent état, très fonctionnel."	1	0.9	0.05	0.03	0.02	1	1	"2025-10-15"
+
+
+RatingsResponses
+"ResponseId", "RatingId", "ResponderId", "ResponseTexte"
