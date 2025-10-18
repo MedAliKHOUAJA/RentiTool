@@ -1,7 +1,6 @@
-// src/features/reviews/types.ts
 export interface Review {
-    id: string;
-    bookingId: string;
+    id: number;
+    bookingId: number;
     toolId: string;
     reviewer: {
       id: string;
@@ -20,10 +19,9 @@ export interface Review {
   }
   
   export interface CreateReviewDto {
-    bookingId: string;
-    toolId: string;
-    revieweeId: string;
-    rating: number;
+    bookingId: number;
+      toolId?: string;
+      revieweeId?: string;    rating: number;
     communication?: number;
     toolCondition?: number;
     punctuality?: number;

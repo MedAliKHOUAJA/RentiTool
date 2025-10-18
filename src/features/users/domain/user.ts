@@ -7,4 +7,6 @@ export interface User {
   phone: string;
   roleId: number;
   locationId: number;
+  locationName?: string;
+  starRating?: number;
 }

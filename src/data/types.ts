@@ -1,5 +1,6 @@
 import { Route } from "@/routers/types";
 import { StaticImageData } from "next/image";
+import { Review } from "@/features/reviews/types";
 
 //  ######  CustomLink  ######## //
 export interface CustomLink {
@@ -150,20 +151,9 @@ export interface ToolDataType {
   href: Route<string>;
   title: string;
   featuredImage: StaticImageData | string;
-  desc?: string;
-  commentCount: number;
-  viewCount: number;
-  address: string;
-  reviewStart: number;
-  reviewCount: number;
-  like: boolean;
-  galleryImgs: (StaticImageData | string)[];
-  price: string;
-  listingCategory: TaxonomyType;
-  saleOff?: string | null;
-  isAds: boolean | null;
   map: {
     lat: number;
     lng: number;
   };
+  reviews?: Review[];
 }

@@ -1,5 +1,7 @@
 
 import { User } from "@/features/users/domain/user";
+import { Review } from "@/features/reviews/types";
+import { Route } from "@/routers/types"; // Import Route
 
 export interface Tool {
   toolId: number;
@@ -15,4 +17,6 @@ export interface Tool {
   isActive: boolean;
   statusId: number;
   imageUrl?: string;
+  reviews?: Review[];
+  href: Route<string>; // Add href property
 }

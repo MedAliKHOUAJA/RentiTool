@@ -24,3 +24,59 @@ Ratings
 
 RatingsResponses
 "ResponseId", "RatingId", "ResponderId", "ResponseTexte"
+
+
+
+
+
+RatedEntityType
+
+"RatedEntityId", "RatedEntityName"
+1	"Tool"
+2	"Rater"
+3	"Rated"
+
+
+Locations
+
+ "Governorate", "Delegation", "Postalcode", "LocationId"
+
+"Tunis"	"Carthage"	2035	1
+"Tunis"	"[translate:Médina]"	1004	2
+"Tunis"	"Bab Bhar"	1005	3
+"Tunis"	"Bab Souika"	1006	4
+"Tunis"	"El Omrane"	1074	5
+"Tunis"	"El Omrane Supérieur"	1075	6
+"Tunis"	"Ettahrir"	1080	7
+"Tunis"	"El Menzah"	1090	8
+"Tunis"	"Cité El Khadra"	1003	9
+"Tunis"	"Le Bardo"	2000	10
+"Tunis"	"Essijoumi"	1072	11
+"Tunis"	"Ezzouhour"	2052	12
+"Tunis"	"El Hrairia"	2087	13
+"Tunis"	"Sidi Hassine"	1095	14
+"Tunis"	"El Ouardia"	1096	15
+"Tunis"	"El Kabaria"	1097	16
+"Tunis"	"Sidi El Béchir"	1098	17
+"Tunis"	"Djebel Jelloud"	1099	18
+"Tunis"	"La Goulette"	2072	19
+"Tunis"	"Le Kram"	2071	20
+"Tunis"	"La Marsa"	2070	21
+"Ariana"	"Ariana Ville"	2080	22
+"Ariana"	"Soukra"	2036	23
+"Ariana"	"Raoued"	2030	24
+"Ariana"	"Kallat El Andalous"	2083	25
+"Ariana"	"Sidi Thabet"	2074	26
+"Ariana"	"Cité Ettadhamen"	2070	27
+"Ariana"	"Mnihla"	2084	28
+"Ben Arous"	"Ben Arous"	2013	29
+"Ben Arous"	"Nouvelle Médina"	2063	30
+"Ben Arous"	"El Mourouj"	2074	31
+"Ben Arous"	"Hammam Lif"	2050	32
+"Ben Arous"	"Hammam Chott"	2081	33
+"Ben Arous"	"Bou Mhel ElBassatine"	2082	34
+"Ben Arous"	"Ezzahra"	2034	35
+"Ben Arous"	"Rades"	2040	36
+"Ben Arous"	"Megrine"	2033	37
+"Ben Arous"	"Mohamedia"	2044	38
+"Ben Arous"	"Fouchana"	2083	39

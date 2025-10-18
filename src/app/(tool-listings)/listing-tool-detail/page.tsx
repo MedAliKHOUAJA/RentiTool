@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ToolDataType } from '@/data/types';
+import { ToolDetails } from '@/features/tools/domain/tool-details';
 import GallerySlider from '@/components/GallerySlider';
 import StartRating from '@/components/StartRating';
 import CardAuthorBox from '@/components/CardAuthorBox';
@@ -12,41 +12,37 @@ import ModalSelectDate from '@/components/ModalSelectDate';
 // 🆕 IMPORTS REVIEWS
 import { ReviewList } from '@/features/reviews/components/ReviewList';
 import { ReviewStats } from '@/features/reviews/components/ReviewStats';
-import { useReviews } from '@/features/reviews/hooks/useReviews';
-import { useReviewStats } from '@/features/reviews/hooks/useReviewStats';
+
+import { WriteReviewModal } from '@/features/reviews/components/WriteReviewModal';
 
 const ToolDetailPageContent = () => {
   const searchParams = useSearchParams();
   const toolId = searchParams.get('id');
-  const [tool, setTool] = useState<ToolDataType | null>(null);
+  const [toolDetails, setToolDetails] = useState<ToolDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
 
-  // 🆕 HOOKS REVIEWS
-  const { reviews, loading: reviewsLoading } = useReviews(toolId || '');
-  const { stats } = useReviewStats(toolId || '');
-
-  useEffect(() => {
-    if (toolId) {
-      const fetchTool = async () => {
-        try {
-          setLoading(true);
-          const response = await fetch(`/api/tools/${toolId}`);
-          if (!response.ok) throw new Error('Tool not found');
-          const data = await response.json();
-          setTool(data);
-        } catch (err: any) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchTool();
+  const fetchTool = useCallback(async () => {
+    if (!toolId) return;
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/tools/${toolId}`);
+      if (!response.ok) throw new Error('Tool not found');
+      const data = await response.json();
+      setToolDetails(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   }, [toolId]);
+
+  useEffect(() => {
+    fetchTool();
+  }, [fetchTool]);
 
   const handleBooking = async () => {
     if (!toolId || !selectedStartDate || !selectedEndDate || !quantity) {
@@ -80,24 +76,43 @@ const ToolDetailPageContent = () => {
 
   if (loading) return <div className="container py-10">Chargement...</div>;
   if (error) return <div className="container py-10">Erreur: {error}</div>;
-  if (!tool) return <div className="container py-10">Outil non trouvé.</div>;
+  if (!toolDetails) return <div className="container py-10">Outil non trouvé.</div>;
 
   const { 
     title, 
-    address, 
-    reviewStart, 
-    reviewCount, 
-    price, 
-    saleOff, 
-    desc, 
-    author, 
-    galleryImgs 
-  } = tool;
+    description, 
+    owner, 
+    toolReviews, 
+    ownerReviews, 
+    rentalPricePerDay, 
+    imageUrl 
+  } = toolDetails;
+
+  const reviewStart = toolReviews.length > 0 ? toolReviews.reduce((acc, review) => acc + review.rating, 0) / toolReviews.length : 0;
+  const reviewCount = toolReviews.length;
+
+  const stats = {
+    averageRating: reviewStart,
+    totalReviews: reviewCount,
+    distribution: {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    },
+  };
+
+  if (toolReviews) {
+    for (const review of toolReviews) {
+      stats.distribution[review.rating as keyof typeof stats.distribution]++;
+    }
+  }
 
   return (
     <div className="nc-ListingDetailPage">
       <GallerySlider 
-        galleryImgs={galleryImgs}
+        galleryImgs={imageUrl ? [imageUrl] : []}
         className="max-w-screen-xl mx-auto rounded-3xl"
 
       />
@@ -111,30 +126,30 @@ const ToolDetailPageContent = () => {
               <div className="flex items-center space-x-4">
                 <StartRating reviewCount={reviewCount} point={reviewStart} />
                 <span className="text-sm text-neutral-500 dark:text-neutral-400">({reviewCount} avis)</span>
-                <span className="block text-neutral-500 dark:text-neutral-400">{address}</span>
+                <span className="block text-neutral-500 dark:text-neutral-400">{owner.locationId}</span>
               </div>
-              {saleOff && (
-                <span className="block text-red-500 text-lg font-medium">{saleOff}</span>
-              )}
             </div>
 
             {/* DESCRIPTION */}
             <div className="listingSection__wrap">
               <h2 className="text-2xl font-semibold">Description de l'outil</h2>
               <div className="text-neutral-600 dark:text-neutral-300 mt-4">
-                <p>{desc}</p>
+                <p>{description}</p>
               </div>
             </div>
 
             {/* OWNER */}
             <div className="listingSection__wrap">
               <h2 className="text-2xl font-semibold">À propos du propriétaire</h2>
-              <CardAuthorBox author={author} />
+              <CardAuthorBox author={owner} />
             </div>
 
             {/* 🆕 REVIEWS SECTION */}
             <div className="listingSection__wrap">
-              <h2 className="text-2xl font-semibold mb-6">Avis des locataires</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold">Avis sur l'outil</h2>
+                <WriteReviewModal toolId={toolId || ""} ownerId={owner.userId} reviewType="tool" onReviewSubmitted={fetchTool} />
+              </div>
               
               {/* Stats */}
               {stats && (
@@ -144,7 +159,15 @@ const ToolDetailPageContent = () => {
               )}
               
               {/* List */}
-              <ReviewList reviews={reviews} loading={reviewsLoading} />
+              <ReviewList reviews={toolReviews || []} reviewType="tool" />
+            </div>
+
+            <div className="listingSection__wrap">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold">Avis sur le propriétaire</h2>
+                <WriteReviewModal toolId={toolId || ""} ownerId={owner.userId} reviewType="owner" onReviewSubmitted={fetchTool} />
+              </div>
+              <ReviewList reviews={ownerReviews || []} reviewType="owner" />
             </div>
           </div>
 
@@ -153,7 +176,7 @@ const ToolDetailPageContent = () => {
             <div className="listingSectionSidebar__wrap sticky top-24">
               <h2 className="text-2xl font-semibold">Louer cet outil</h2>
               <div className="flex items-center justify-between mt-4">
-                <span className="text-3xl font-semibold">{price}€</span>
+                <span className="text-3xl font-semibold">{rentalPricePerDay}€</span>
                 <span className="text-base text-neutral-500 dark:text-neutral-400">/ jour</span>
               </div>
 
