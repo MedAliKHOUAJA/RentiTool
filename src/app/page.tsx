@@ -7,6 +7,8 @@ import SectionHowItWork from "@/components/SectionHowItWork";
 import SectionOurFeatures from "@/components/SectionOurFeatures";
 import { ToolDataType } from "@/data/types";
 
+export const dynamic = 'force-dynamic';
+
 async function getTools() {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tools?limit=8`, { cache: 'no-store' });
