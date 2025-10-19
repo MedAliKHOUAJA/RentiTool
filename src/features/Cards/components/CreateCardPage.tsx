@@ -81,7 +81,7 @@ const CreateCardPage = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const data = await getUserById('a1b2c3d4-5678-90ab-cdef-123456789abc');
+        const data = await getUserById('a1b2c3d4-5678-90ab-cdef-123456789abc');//badl ki ji users
         if (data) {
           setUser(data);
         } else {
@@ -315,7 +315,7 @@ const CreateCardPage = () => {
               Logo de l'Entreprise
             </label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Facultatif • Max 5 Mo • JPEG ou PNG
+              de pref • Max 5 Mo •
             </p>
             <Controller
               name="companyLogo"
@@ -364,7 +364,7 @@ const CreateCardPage = () => {
       </div>
 
       {/*bottom action bar  */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 safe-area-inset-bottom">
+<div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 pb-20 safe-area-inset-bottom">
         <div className="max-w-2xl mx-auto flex gap-3">
           <button
             type="button"

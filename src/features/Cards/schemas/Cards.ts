@@ -19,7 +19,7 @@ export const createCardSchema = z.object({
     }
     return true;
   }, {
-    message: 'La photo de profil doit être un fichier JPEG ou PNG et ne pas dépasser 5 Mo',
+    message: 'un fichier JPEG ou PNG svp, max 5 Mo',
     path: ['profilePicture'],
   }),
   companyLogo: z.any().optional().nullable().refine((val) => {
@@ -36,7 +36,7 @@ export const createCardSchema = z.object({
     }
     return true;
   }, {
-    message: 'Le logo de l’entreprise doit être un fichier JPEG ou PNG et ne pas dépasser 5 Mo',
+    message: 'un fichier JPEG ou PNG svp, max 5 Mo',
     path: ['companyLogo'],
   }),
 }).refine((data) => {

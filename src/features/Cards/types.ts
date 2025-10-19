@@ -6,16 +6,18 @@ export interface Card {
   CompanyName: string;
   WebSite: string | null;
   QrCodeUrl: string | null;
-  SocialLinks: { [key: string]: string } | null;
-  BackgroundColor?: string;
-  TextColor?: string;
+  SocialLinks: Record<string, string> | null;
   FirstName: string;
   LastName: string;
   Email: string;
-  Phone: number | null;
-  Governorate?: string;
-  Delegation?: string;
-  Postalcode?: number;
-  ProfilePictureUrl?: string | null;
-  CompanyLogoUrl?: string | null;
+  Phone: string | null;
+  Governorate: string | null;
+  Delegation: string | null;
+  Postalcode: string | null;
+  ProfilePictureUrl: string | null;
+  CompanyLogoUrl: string | null;
+  IsFavorite?: boolean;
+  IsArchived?: boolean; 
+  Notes?: string;
+  ReceivedAt?: string;
 }

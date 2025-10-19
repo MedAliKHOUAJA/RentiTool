@@ -242,3 +242,51 @@ export async function getCardById(cardId: number) {
     return null;
   }
 }
+
+
+export async function saveSharedCard(cardId: number, notes?: string) {
+  try {
+    const userId = 'a1b2c3d4-5678-90ab-cdef-123456789abc'; // badl ki ji user
+    const card = await getCardById(cardId);
+    if (!card) throw new Error('Carte non trouvée');
+
+    // Insert into SharedCards with def val
+    const result = await db.query(
+      `INSERT INTO public."SharedCards" ("UserId", "BusinessCardId", "IsFavorite", "IsArchived", "Notes", "ReceivedAt")
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT ("UserId", "BusinessCardId") DO UPDATE
+       SET "Notes" = $5, "ReceivedAt" = $6
+       RETURNING "SharedCardId"`,
+      [userId, cardId, false, false, notes || null, new Date().toISOString().split('T')[0]]
+    );
+
+    if (result.rowCount === 0) {
+      return { success: true, message: 'Carte déjà sauvegardée (mise à jour des notes)' };
+    }
+    return { success: true, sharedCardId: result.rows[0].SharedCardId };
+  } catch (error) {
+    console.error('Error saving shared card:', error);
+    throw new Error('Erreur serveur lors de la sauvegarde de la carte');
+  }
+}
+
+export async function getSavedCardsByUserId(userId: string) {
+  try {
+    const result = await db.query(
+      `SELECT 
+         bc.*,
+         sc."IsFavorite",
+         sc."IsArchived",
+         sc."Notes",
+         sc."ReceivedAt"
+       FROM public."BusinessCards" bc
+       JOIN public."SharedCards" sc ON bc."CardId" = sc."BusinessCardId"
+       WHERE sc."UserId" = $1`,
+      [userId]
+    );
+    return result.rows as any[];
+  } catch (error) {
+    console.error('Error fetching saved cards:', error);
+    throw new Error('Erreur lors de la récupération des cartes sauvegardées');
+  }
+}

@@ -1,20 +1,27 @@
+// src/features/Cards/components/DetailsCardPage.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { getCardById } from '@/features/Cards/actions/Cards';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { getCardById, saveSharedCard } from '@/features/Cards/actions/Cards';
 import { Card } from '@/features/Cards/types';
-import toast from 'react-hot-toast';
 import { Mail, Phone, Globe, MapPin, Linkedin, Facebook, Twitter, Instagram, Github, LucideIcon } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const DetailsCardPage = () => {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const cardId = Number(params.cardId);
+  const isShared = searchParams.get('shared') === 'true';
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
     const fetchCard = async () => {
@@ -27,7 +34,7 @@ const DetailsCardPage = () => {
         }
       } catch (err) {
         setError('Erreur lors de la récupération des données de la carte');
-        toast.error('Erreur lors de la récupération des données de la carte');
+        alert('Erreur lors de la récupération des données de la carte');
       } finally {
         setLoading(false);
       }
@@ -41,9 +48,46 @@ const DetailsCardPage = () => {
       facebook: Facebook,
       twitter: Twitter,
       instagram: Instagram,
-      github: Github
+      github: Github,
     };
     return icons[platform.toLowerCase()] || Globe;
+  };
+
+  const handleShare = () => {
+    const shareLink = `${window.location.origin}/account/cards/details/${cardId}?shared=true`;
+    navigator.clipboard.writeText(shareLink)
+      .then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 1500); 
+      })
+      .catch((err) => {
+        alert('Erreur lors de la copie du lien. Veuillez réessayer.'); 
+        console.error('Clipboard error:', err);
+      });
+  };
+
+  const handleSave = async () => {
+    if (saved || saving) return;
+
+    setSaving(true);
+    try {
+      await saveSharedCard(cardId);
+      setSaved(true);
+      alert('Carte sauvegardée avec succès !');
+    } catch (err) {
+      alert('Erreur lors de la sauvegarde de la carte');
+      console.error('Save error:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleQR = () => {
+    setShowQR(true);
+  };
+
+  const closeQR = () => {
+    setShowQR(false);
   };
 
   if (loading) {
@@ -72,6 +116,8 @@ const DetailsCardPage = () => {
       </div>
     );
   }
+
+  const shareLink = `${window.location.origin}/account/cards/details/${cardId}?shared=true`;
 
   return (
     <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -245,21 +291,21 @@ const DetailsCardPage = () => {
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                       <p className="text-sm text-gray-500 dark:text-gray-400 uppercase font-semibold mb-3">Réseaux Sociaux</p>
                       <div className="flex space-x-3">
-{Object.entries(card.SocialLinks).map(([platform, url]) => {
-  const Icon = getSocialIcon(platform);
-  return (
-    <a
-      key={platform}
-      href={url as string}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-blue-600 dark:hover:bg-blue-600 flex items-center justify-center transition-all group"
-      title={platform}
-    >
-      <Icon className="w-5 h-5 text-gray-600 dark:text-gray-300 group-hover:text-white transition-colors" />
-    </a>
-  );
-})}
+                        {Object.entries(card.SocialLinks).map(([platform, url]) => {
+                          const Icon = getSocialIcon(platform);
+                          return (
+                            <a
+                              key={platform}
+                              href={url as string}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-blue-600 dark:hover:bg-blue-600 flex items-center justify-center transition-all group"
+                              title={platform}
+                            >
+                              <Icon className="w-5 h-5 text-gray-600 dark:text-gray-300 group-hover:text-white transition-colors" />
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -283,13 +329,53 @@ const DetailsCardPage = () => {
           >
             Retour
           </button>
-          <button
-            onClick={() => toast.success('Fonction de partage bientôt disponible!')}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors shadow-lg"
-          >
-            Partager
-          </button>
+          {!isShared && (
+            <>
+              <button
+                onClick={handleShare}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors shadow-lg"
+              >
+                {isCopied ? 'Lien Copié !' : 'Partager'}
+              </button>
+              <button
+                onClick={handleQR}
+                className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-colors shadow-lg"
+              >
+                QR Code
+              </button>
+            </>
+          )}
+          {isShared && (
+            <button
+              onClick={handleSave}
+              disabled={saved || saving}
+              className={`px-6 py-3 text-white rounded-lg transition-colors ${
+                saved ? 'bg-gray-400 cursor-not-allowed' : saving ? 'bg-green-400' : 'bg-green-500 hover:bg-green-600'
+              }`}
+            >
+              {saving ? 'Sauvegarde...' : saved ? 'Sauvegardé' : 'Sauvegarder'}
+            </button>
+          )}
         </div>
+
+        {/* QR Code Display */}
+        {showQR && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-lg font-bold mb-4">Scannez le QR Code</h3>
+              <QRCodeSVG value={shareLink} size={256} className="mx-auto" />
+              <p className="text-center mt-4 text-sm text-gray-600">
+                Ce QR Code mène à : {shareLink}
+              </p>
+              <button
+                onClick={closeQR}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Info Text */}
         <div className="text-center mt-8">
