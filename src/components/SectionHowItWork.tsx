@@ -1,86 +1,57 @@
 import React, { FC } from "react";
-import HIW1img from "@/images/HIW1.png";
-import HIW2img from "@/images/HIW2.png";
-import HIW3img from "@/images/HIW3.png";
-import VectorImg from "@/images/VectorHIW.svg";
-import Image, { StaticImageData } from "next/image";
 import Heading from "@/shared/Heading";
+import Image from "next/image";
+import HIW1 from "@/images/tools/trouvez-outil-parfait.png";
+import HIW2 from "@/images/tools/reservez-payez-securite.png";
+import HIW3 from "@/images/tools/realisez-vous-projets.png";
+
 
 export interface SectionHowItWorkProps {
   className?: string;
-  data?: {
-    id: number;
-    title: string;
-    desc: string;
-    img: StaticImageData;
-    imgDark?: StaticImageData;
-  }[];
+  data?: { id: number; title: string; desc: string; img: string }[];
 }
 
-const DEMO_DATA: SectionHowItWorkProps["data"] = [
+const DATA = [
   {
     id: 1,
-    img: HIW1img,
-    title: "Book & relax",
-    desc: "Let each trip be an inspirational journey, each room a peaceful space",
+    title: "Trouvez l'outil parfait",
+    desc: "Parcourez notre large sélection d'outils par catégorie, localisation ou prix.",
+    img: HIW1,
   },
   {
     id: 2,
-    img: HIW2img,
-    title: "Smart checklist",
-    desc: "Let each trip be an inspirational journey, each room a peaceful space",
+    title: "Réservez et payez en toute sécurité",
+    desc: "Contactez le propriétaire, réservez l'outil et payez via notre plateforme sécurisée.",
+    img: HIW2,
   },
   {
     id: 3,
-    img: HIW3img,
-    title: "Save more",
-    desc: "Let each trip be an inspirational journey, each room a peaceful space",
+    title: "Réalisez vos projets",
+    desc: "Récupérez l'outil, utilisez-le pour vos projets et retournez-le facilement.",
+    img: HIW3,
   },
 ];
 
-const SectionHowItWork: FC<SectionHowItWorkProps> = ({
-  className = "",
-  data = DEMO_DATA,
-}) => {
+const SectionHowItWork: FC<SectionHowItWorkProps> = ({ className = "" }) => {
   return (
-    <div
-      className={`nc-SectionHowItWork  ${className}`}
-      data-nc-id="SectionHowItWork"
-    >
-      <Heading isCenter desc="Keep calm & travel on">
-        How it work
+    <div className={`nc-SectionHowItWork relative ${className}`}>
+      <Heading
+        isCenter
+        desc="Un processus simple et rapide pour louer ou proposer vos outils."
+      >
+        Comment ça marche ?
       </Heading>
       <div className="mt-20 relative grid md:grid-cols-3 gap-20">
-        <Image
-          className="hidden md:block absolute inset-x-0 top-10"
-          src={VectorImg}
-          alt=""
-        />
-        {data.map((item) => (
+        {DATA.map((item) => (
           <div
             key={item.id}
             className="relative flex flex-col items-center max-w-xs mx-auto"
           >
-            {item.imgDark ? (
-              <>
-                <Image
-                  className="dark:hidden block mb-8 max-w-[180px] mx-auto"
-                  src={item.img}
-                  alt=""
-                />
-                <Image
-                  alt=""
-                  className="hidden dark:block mb-8 max-w-[180px] mx-auto"
-                  src={item.imgDark}
-                />
-              </>
-            ) : (
-              <Image
-                alt=""
-                className="mb-8 max-w-[180px] mx-auto"
-                src={item.img}
-              />
-            )}
+            <Image
+              alt=""
+              className="mb-8 max-w-[180px] mx-auto"
+              src={item.img}
+            />
             <div className="text-center mt-auto">
               <h3 className="text-xl font-semibold">{item.title}</h3>
               <span className="block mt-5 text-neutral-500 dark:text-neutral-400">

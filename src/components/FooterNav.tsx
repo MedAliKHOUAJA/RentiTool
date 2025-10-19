@@ -25,18 +25,13 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   {
-    name: "Explore",
-    link: "/",
+    name: "Outils",
+    link: "/tools",
     icon: MagnifyingGlassIcon,
   },
   {
-    name: "Wishlists",
-    link: "/account-savelists",
-    icon: HeartIcon,
-  },
-  {
-    name: "Log in",
-    link: "/account",
+    name: "Mon Compte",
+    link: "/account/profile",
     icon: UserCircleIcon,
   },
   {

@@ -25,8 +25,9 @@
     "framer-motion": "^10.12.16",
     "google-map-react": "^2.2.1",
     "lodash": "^4.17.21",
-    "next": "^13.4.3",
+    "next": "^15.5.6",
     "next-auth": "^4.23.1",
+    "pg": "^8.16.3",
     "rc-slider": "^10.1.1",
     "react": "^18.2.0",
     "react-datepicker": "^4.11.0",
@@ -40,6 +41,9 @@
     "typescript": "5.0.4"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/pg": "^8.15.5",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.23",
     "tailwindcss": "^3.3.2"

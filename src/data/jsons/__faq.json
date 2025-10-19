@@ -1,0 +1,47 @@
+[
+  {
+    "category": "Général",
+    "questions": [
+      {
+        "id": "1",
+        "question": "Qu'est-ce que RentiTool ?",
+        "answer": "RentiTool est une plateforme de location d'outils entre particuliers, vous permettant de louer le matériel dont vous avez besoin ou de louer vos propres outils pour générer un revenu."
+      },
+      {
+        "id": "2",
+        "question": "Comment fonctionne RentiTool ?",
+        "answer": "Les loueurs publient leurs outils disponibles. Les locataires recherchent, réservent et paient via la plateforme. Après accord, ils récupèrent et retournent l'outil."
+      }
+    ]
+  },
+  {
+    "category": "Pour les Loueurs",
+    "questions": [
+      {
+        "id": "3",
+        "question": "Comment puis-je lister mon outil ?",
+        "answer": "Connectez-vous, allez dans 'Mon Compte' > 'Mes Outils' et suivez les étapes pour ajouter une nouvelle annonce. Vous devrez fournir des détails, des photos et fixer un prix."
+      },
+      {
+        "id": "4",
+        "question": "Comment suis-je payé ?",
+        "answer": "Les paiements sont traités de manière sécurisée via la plateforme. Une fois la location terminée et confirmée, les fonds sont transférés sur votre compte bancaire."
+      }
+    ]
+  },
+  {
+    "category": "Pour les Locataires",
+    "questions": [
+      {
+        "id": "5",
+        "question": "Comment réserver un outil ?",
+        "answer": "Recherchez l'outil désiré, sélectionnez les dates de location, envoyez une demande au loueur et attendez sa confirmation. Le paiement est effectué via la plateforme."
+      },
+      {
+        "id": "6",
+        "question": "Que faire en cas de problème avec un outil ?",
+        "answer": "Contactez immédiatement le loueur et le support RentiTool. Nous vous aiderons à trouver une solution."
+      }
+    ]
+  }
+]
