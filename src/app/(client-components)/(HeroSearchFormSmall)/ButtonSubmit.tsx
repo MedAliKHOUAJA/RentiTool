@@ -3,6 +3,7 @@
 import React, { FC } from "react";
 import { PathName } from "@/routers/types";
 import Link from "next/link";
+import { Route } from "next";
 
 interface Props {
   className?: string;
@@ -11,11 +12,11 @@ interface Props {
 
 const ButtonSubmit: FC<Props> = ({
   className = "",
-  href = "/listing-stay-map",
+  href = "/listing-stay-map" as Route,
 }) => {
   return (
     <Link
-      href={href}
+      href={href as Route}
       type="button"
       className={`h-14 w-14 rounded-full bg-primary-6000 hover:bg-primary-700 flex items-center justify-center text-neutral-50 focus:outline-none ${className}`}
       onClick={() => {

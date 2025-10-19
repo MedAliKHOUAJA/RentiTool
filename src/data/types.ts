@@ -151,6 +151,16 @@ export interface ToolDataType {
   href: Route<string>;
   title: string;
   featuredImage: StaticImageData | string;
+  commentCount: number;
+  viewCount: number;
+  address: string;
+  reviewStart: number;
+  reviewCount: number;
+  like: boolean;
+  price: string;
+  listingCategory: TaxonomyType;
+  saleOff?: string | null;
+  isAds?: boolean | null;
   map: {
     lat: number;
     lng: number;

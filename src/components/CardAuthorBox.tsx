@@ -1,10 +1,10 @@
 import React, { FC } from "react";
 import { User } from "@/features/users/domain/user";
-import { StarIcon } from "@heroicons/react/24/solid";
-import Avatar from "@/shared/Avatar";
-import Badge from "@/shared/Badge";
-import Link from "next/link";
 import { Route } from "next";
+import Link from "next/link";
+import Badge from "@/shared/Badge";
+import Avatar from "@/shared/Avatar";
+import { StarIcon } from "@heroicons/react/24/solid";
 
 export interface CardAuthorBoxProps {
   className?: string;

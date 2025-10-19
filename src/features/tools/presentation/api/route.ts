@@ -1,7 +1,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { PostgresToolRepository } from "../../infrastructure/postgres-tool.repository";
-import { ToolPresenter } from "../tool.presenter";
 import { GetToolsUseCase } from "../../application/get-tools.use-case";
 
 export async function GET(request: NextRequest) {
@@ -14,9 +13,9 @@ export async function GET(request: NextRequest) {
 
     const tools = await getToolsUseCase.execute(limit ? parseInt(limit) : undefined);
 
-    const presentedTools = tools.map(ToolPresenter.toToolDataType);
+  
 
-    return NextResponse.json(presentedTools);
+    return NextResponse.json(tools);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to fetch tools' }, { status: 500 });
