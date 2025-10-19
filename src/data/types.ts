@@ -163,6 +163,7 @@ export interface ToolDataType {
   listingCategory: TaxonomyType;
   saleOff?: string | null;
   isAds: boolean | null;
+  isActive?: boolean; // optional to allow owner list to show current state
   map: {
     lat: number;
     lng: number;

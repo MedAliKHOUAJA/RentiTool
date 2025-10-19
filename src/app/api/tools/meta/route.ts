@@ -6,18 +6,24 @@ export async function GET() {
     const envTable = process.env.TOOLS_TABLE?.trim();
     const candidates = [
       envTable,
-      'tools', 'Tools', 'public."Tools"', 'public.tools',
-      'tool', 'Tool', 'public."Tool"', 'public.tool',
+      "tools",
+      "Tools",
+      'public."Tools"',
+      "public.tools",
+      "tool",
+      "Tool",
+      'public."Tool"',
+      "public.tool",
     ].filter(Boolean) as string[];
 
     const parseIdent = (ident: string): { schema: string; table: string } => {
-      const defSchema = 'public';
-      if (ident.includes('.')) {
-        const [schemaRaw, tableRaw] = ident.split('.', 2);
-        const unquote = (s: string) => s.replace(/^"|"$/g, '');
+      const defSchema = "public";
+      if (ident.includes(".")) {
+        const [schemaRaw, tableRaw] = ident.split(".", 2);
+        const unquote = (s: string) => s.replace(/^"|"$/g, "");
         return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
       }
-      return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+      return { schema: defSchema, table: ident.replace(/^"|"$/g, "") };
     };
 
     const tryResolve = async () => {
@@ -36,7 +42,9 @@ export async function GET() {
 
     const resolved = await tryResolve();
     if (!resolved) {
-      return new NextResponse('Tools table not found. Set TOOLS_TABLE env.', { status: 500 });
+      return new NextResponse("Tools table not found. Set TOOLS_TABLE env.", {
+        status: 500,
+      });
     }
 
     const { schema, table } = resolved;
@@ -60,7 +68,13 @@ export async function GET() {
       [schema, table]
     );
 
-    const result: Record<string, { valueType: 'number'|'string', options: Array<{ value: any; label: string }> }> = {};
+    const result: Record<
+      string,
+      {
+        valueType: "number" | "string";
+        options: Array<{ value: any; label: string }>;
+      }
+    > = {};
 
     for (const row of fkRes.rows) {
       const fkColumn = row.fk_column as string;
@@ -83,32 +97,53 @@ export async function GET() {
         `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`,
         [refSchema, refTable]
       );
-  const cols = colsRes.rows as Array<{ column_name: string; data_type: string }>;
-      const lowerMap: Record<string, string> = Object.fromEntries(cols.map(c => [c.column_name.toLowerCase(), c.column_name]));
-  const labelCandidateNames = ['categoryname','subcategoryname','name','title','label','description','category_name','sub_category_name'];
-      let labelCol = labelCandidateNames.map(n => lowerMap[n]).find(Boolean) || refPk;
+      const cols = colsRes.rows as Array<{
+        column_name: string;
+        data_type: string;
+      }>;
+      const lowerMap: Record<string, string> = Object.fromEntries(
+        cols.map((c) => [c.column_name.toLowerCase(), c.column_name])
+      );
+      const labelCandidateNames = [
+        "categoryname",
+        "subcategoryname",
+        "name",
+        "title",
+        "label",
+        "description",
+        "category_name",
+        "sub_category_name",
+      ];
+      let labelCol =
+        labelCandidateNames.map((n) => lowerMap[n]).find(Boolean) || refPk;
 
       // Determine value type for UI based on referencing column type
       const refTypeRes = await query(
         `SELECT data_type FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 AND column_name=$3`,
         [schema, table, fkColumn]
       );
-      const dataType: string = refTypeRes.rows[0]?.data_type || '';
-      const valueType: 'number'|'string' = /int|numeric|double|real|decimal/i.test(dataType) ? 'number' : 'string';
+      const dataType: string = refTypeRes.rows[0]?.data_type || "";
+      const valueType: "number" | "string" =
+        /int|numeric|double|real|decimal/i.test(dataType) ? "number" : "string";
 
       // Fetch options (limit to 200)
       const q = (x: string) => `"${x}"`;
       const refFrom = `"${refSchema}"."${refTable}"`;
-      const optSql = `SELECT ${q(refPk)} as value, ${q(labelCol)} as label FROM ${refFrom} ORDER BY ${q(labelCol)} ASC LIMIT 200`;
+      const optSql = `SELECT ${q(refPk)} as value, ${q(
+        labelCol
+      )} as label FROM ${refFrom} ORDER BY ${q(labelCol)} ASC LIMIT 200`;
       const optsRes = await query(optSql);
-      const options = optsRes.rows.map((r: any) => ({ value: r.value, label: String(r.label ?? r.value) }));
+      const options = optsRes.rows.map((r: any) => ({
+        value: r.value,
+        label: String(r.label ?? r.value),
+      }));
 
       result[fkColumn] = { valueType, options };
     }
 
     return NextResponse.json({ foreignKeys: result });
   } catch (err: any) {
-    console.error('/api/tools/meta error:', err?.message || err);
-    return new NextResponse('Failed to load tool metadata', { status: 500 });
+    console.error("/api/tools/meta error:", err?.message || err);
+    return new NextResponse("Failed to load tool metadata", { status: 500 });
   }
 }

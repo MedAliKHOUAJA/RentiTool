@@ -9,7 +9,14 @@ import { Route } from "@/routers/types";
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const ownerFilter = url.searchParams.get('ownerId') || undefined;
+    const ownerFilter = url.searchParams.get("ownerId") || undefined;
+    const searchQ = (url.searchParams.get("q") || "").trim();
+    const orderByParam = (url.searchParams.get("orderBy") || "")
+      .trim()
+      .toLowerCase();
+    const orderParam = (url.searchParams.get("order") || "")
+      .trim()
+      .toLowerCase();
     const envTable = process.env.TOOLS_TABLE?.trim();
     const candidates = [
       envTable,
@@ -166,11 +173,12 @@ export async function GET(request: Request) {
       [schema, table]
     );
 
-  const fkFor = (colName?: string) => fkRows.rows.find((r: any) => r.fk_column === colName);
-  const joins: string[] = [];
-  const extraSelects: string[] = [];
-  const qq = (name: string) => `"${name}"`;
-  const qa = (alias: string, col: string) => `${alias}.${qq(col)}`;
+    const fkFor = (colName?: string) =>
+      fkRows.rows.find((r: any) => r.fk_column === colName);
+    const joins: string[] = [];
+    const extraSelects: string[] = [];
+    const qq = (name: string) => `"${name}"`;
+    const qa = (alias: string, col: string) => `${alias}.${qq(col)}`;
 
     const addLabelJoin = async (
       toolCol: string | undefined,
@@ -198,86 +206,204 @@ export async function GET(request: Request) {
         [refSchema, refTable]
       );
       const refCols: string[] = colsRes.rows.map((r: any) => r.column_name);
-      const lowerMap: Record<string, string> = Object.fromEntries(refCols.map(c => [c.toLowerCase(), c]));
-      const labelCol = labelCandidates.map(n => lowerMap[n.toLowerCase()]).find(Boolean) || refPk;
-  joins.push(`LEFT JOIN ${qq(refSchema)}.${qq(refTable)} ${alias} ON t.${qq(toolCol)} = ${alias}.${qq(refPk)}`);
+      const lowerMap: Record<string, string> = Object.fromEntries(
+        refCols.map((c) => [c.toLowerCase(), c])
+      );
+      const labelCol =
+        labelCandidates.map((n) => lowerMap[n.toLowerCase()]).find(Boolean) ||
+        refPk;
+      joins.push(
+        `LEFT JOIN ${qq(refSchema)}.${qq(refTable)} ${alias} ON t.${qq(
+          toolCol
+        )} = ${alias}.${qq(refPk)}`
+      );
       extraSelects.push(`${qa(alias, labelCol)} as ${q(outAlias)}`);
     };
 
     try {
-      await addLabelJoin(col.category, 'cat', 'categoryName', ['CategoryName','name','title','label','description','category_name']);
+      await addLabelJoin(col.category, "cat", "categoryName", [
+        "CategoryName",
+        "name",
+        "title",
+        "label",
+        "description",
+        "category_name",
+      ]);
     } catch (e) {
-      console.warn('Category label join discovery failed, skipping');
+      console.warn("Category label join discovery failed, skipping");
     }
     try {
-      await addLabelJoin(col.subcategory, 'subcat', 'subCategoryName', ['SubCategoryName','name','title','label','description','sub_category_name']);
+      await addLabelJoin(col.subcategory, "subcat", "subCategoryName", [
+        "SubCategoryName",
+        "name",
+        "title",
+        "label",
+        "description",
+        "sub_category_name",
+      ]);
     } catch (e) {
-      console.warn('SubCategory label join discovery failed, skipping');
+      console.warn("SubCategory label join discovery failed, skipping");
     }
 
     // Try to join images table to fetch primary image URL
     try {
       const imagesEnv = process.env.IMAGES_TABLE?.trim();
-      const imgCandidates = [imagesEnv, 'images','Images','public."Images"','public.images','image','Image','public."Image"','public.image'].filter(Boolean) as string[];
+      const imgCandidates = [
+        imagesEnv,
+        "images",
+        "Images",
+        'public."Images"',
+        "public.images",
+        "image",
+        "Image",
+        'public."Image"',
+        "public.image",
+      ].filter(Boolean) as string[];
       // Resolve images table
       for (const cand of imgCandidates) {
-        const parseIdent = (ident: string): { schema: string; table: string } => {
-          const defSchema = 'public';
-          if (ident.includes('.')) { const [s,t] = ident.split('.',2); const unq=(x:string)=>x.replace(/^"|"$/g,''); return { schema: unq(s), table: unq(t) }; }
-          return { schema: 'public', table: ident.replace(/^"|"$/g,'') };
+        const parseIdent = (
+          ident: string
+        ): { schema: string; table: string } => {
+          const defSchema = "public";
+          if (ident.includes(".")) {
+            const [s, t] = ident.split(".", 2);
+            const unq = (x: string) => x.replace(/^"|"$/g, "");
+            return { schema: unq(s), table: unq(t) };
+          }
+          return { schema: "public", table: ident.replace(/^"|"$/g, "") };
         };
         const { schema: ischema, table: itable } = parseIdent(cand!);
-        const colsRes = await query(`SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`, [ischema, itable]);
+        const colsRes = await query(
+          `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`,
+          [ischema, itable]
+        );
         if (!colsRes.rows.length) continue;
-        const icols: string[] = colsRes.rows.map((r:any)=>r.column_name);
-        const imap: Record<string,string> = Object.fromEntries(icols.map(c=>[c.toLowerCase(), c]));
-        const ipk = imap['imageid'] || imap['id'] || imap['image_id'];
-        const itool = imap['toolid'] || imap['tool_id'];
-        const iprimary = imap['isprimarytoolimage'] || imap['is_primary'] || imap['isprimary'];
+        const icols: string[] = colsRes.rows.map((r: any) => r.column_name);
+        const imap: Record<string, string> = Object.fromEntries(
+          icols.map((c) => [c.toLowerCase(), c])
+        );
+        const ipk = imap["imageid"] || imap["id"] || imap["image_id"];
+        const itool = imap["toolid"] || imap["tool_id"];
+        const iprimary =
+          imap["isprimarytoolimage"] || imap["is_primary"] || imap["isprimary"];
         if (!ipk || !itool) continue;
         // LATERAL subquery to pick preferred image id
         const lateral = `LEFT JOIN LATERAL (
-          SELECT ${qq(ipk)} as img_id${iprimary ? `, ${qq(iprimary)} as is_primary` : ''}
+          SELECT ${qq(ipk)} as img_id${
+          iprimary ? `, ${qq(iprimary)} as is_primary` : ""
+        }
           FROM ${qq(ischema)}.${qq(itable)} i
           WHERE i.${qq(itool)} = t.${qq(col.id!)}
-          ORDER BY ${iprimary ? `i.${qq(iprimary)} DESC,` : ''} i.${qq(ipk)} DESC
+          ORDER BY ${iprimary ? `i.${qq(iprimary)} DESC,` : ""} i.${qq(
+          ipk
+        )} DESC
           LIMIT 1
         ) img ON true`;
         joins.push(lateral);
-        extraSelects.push(`img.img_id as ${q('imageId')}`);
+        extraSelects.push(`img.img_id as ${q("imageId")}`);
         break;
       }
     } catch (e) {
-      console.warn('Image join discovery failed, skipping');
+      console.warn("Image join discovery failed, skipping");
     }
 
-  const select = [selectParts.join(', '), ...extraSelects].filter(Boolean).join(', ');
-  const from = `${qq(schema)}.${qq(table)} t`;
-  const whereParts: string[] = [];
-  const params: any[] = [];
-  if (ownerFilter && col.owner) {
-    whereParts.push(`t.${qq(col.owner)} = $${params.length + 1}`);
-    params.push(ownerFilter);
-  }
-  const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
-    const sql = `SELECT ${select} FROM ${from} ${joins.join(' ')} ${whereSql}`;
+    const select = [selectParts.join(", "), ...extraSelects]
+      .filter(Boolean)
+      .join(", ");
+    const from = `${qq(schema)}.${qq(table)} t`;
+    const whereParts: string[] = [];
+    const params: any[] = [];
+    if (ownerFilter && col.owner) {
+      whereParts.push(`t.${qq(col.owner)} = $${params.length + 1}`);
+      params.push(ownerFilter);
+    }
+    // Search by title/description if provided
+    if (searchQ) {
+      const ors: string[] = [];
+      if (col.title) {
+        ors.push(`t.${qq(col.title)} ILIKE $${params.length + 1}`);
+        params.push(`%${searchQ}%`);
+      }
+      if (col.description) {
+        ors.push(`t.${qq(col.description)} ILIKE $${params.length + 1}`);
+        params.push(`%${searchQ}%`);
+      }
+      if (ors.length) {
+        whereParts.push(`(${ors.join(" OR ")})`);
+      }
+    }
+    const whereSql = whereParts.length
+      ? `WHERE ${whereParts.join(" AND ")}`
+      : "";
+    // ORDER BY handling
+    const resolveOrderCol = () => {
+      switch (orderByParam) {
+        case "title":
+          return col.title;
+        case "price":
+          return col.priceDay;
+        case "brand":
+          return col.brand;
+        case "model":
+          return col.model;
+        case "category":
+          return col.category; // sort by FK id if name is unavailable
+        case "id":
+          return col.id;
+        default:
+          return undefined;
+      }
+    };
+    const orderCol = resolveOrderCol() || col.id; // fallback to PK
+    const orderDir =
+      orderParam === "asc" || orderParam === "desc"
+        ? orderParam.toUpperCase()
+        : "DESC";
+    const orderSql = orderCol
+      ? `ORDER BY t.${qq(orderCol)} ${orderDir}${
+          col.id && orderCol !== col.id ? `, t.${qq(col.id)} DESC` : ""
+        }`
+      : "";
+
+    const sql = `SELECT ${select} FROM ${from} ${joins.join(
+      " "
+    )} ${whereSql} ${orderSql}`;
     let rows: any[];
     try {
       const res = await query(sql, params);
       rows = res.rows;
     } catch (e: any) {
       // Fallback: run without joins if label discovery caused an error
-      console.warn('GET /api/tools join query failed, falling back without joins:', e?.message || e);
-      const fallbackSql = `SELECT ${selectParts.join(', ')} FROM ${from} ${whereSql}`;
+      console.warn(
+        "GET /api/tools join query failed, falling back without joins:",
+        e?.message || e
+      );
+      const fallbackSql = `SELECT ${selectParts.join(
+        ", "
+      )} FROM ${from} ${whereSql} ${orderSql}`;
       const res2 = await query(fallbackSql, params);
       rows = res2.rows;
     }
 
-  const tools: ToolDataType[] = (rows as unknown as ToolEntity[]).map(
+    // If this is a public listing (no ownerId filter) and we detected an isActive column,
+    // filter out inactive tools safely in JS to avoid SQL type issues across schemas.
+    const filteredRows =
+      !ownerFilter && (rows?.length ?? 0) > 0
+        ? rows.filter((r: any) => {
+            if (!("isActive" in r)) return true; // if schema has no isActive, keep
+            const v = (r as any).isActive;
+            // accept true, 'true', 1, '1' as active
+            return v === true || v === "true" || v === 1 || v === "1";
+          })
+        : rows;
+
+    const tools: ToolDataType[] = (filteredRows as unknown as ToolEntity[]).map(
       (r: ToolEntity) => {
-  const baseCategory = DEMO_TOOL_CATEGORIES.find((c) => c.id === r.categoryId) || DEMO_TOOL_CATEGORIES[0];
-  const categoryName = (r as any).categoryName ?? baseCategory.name;
-  const category = { ...baseCategory, name: categoryName };
+        const baseCategory =
+          DEMO_TOOL_CATEGORIES.find((c) => c.id === r.categoryId) ||
+          DEMO_TOOL_CATEGORIES[0];
+        const categoryName = (r as any).categoryName ?? baseCategory.name;
+        const category = { ...baseCategory, name: categoryName };
 
         // Simple deterministic author pick until users are DB-backed
         const ownerSeed = Array.from(String(r.ownerId || "0")).reduce(
@@ -296,7 +422,9 @@ export async function GET(request: Request) {
             : `Tool #${r.toolId}`;
 
         const imageId: number | null = (r as any).imageId ?? null;
-        const featuredImage = imageId ? `/api/images/${imageId}` : "/images/placeholder-large.png";
+        const featuredImage = imageId
+          ? `/api/images/${imageId}`
+          : "/images/placeholder-large.png";
         const tool: ToolDataType = {
           id: r.toolId,
           author,
@@ -316,6 +444,7 @@ export async function GET(request: Request) {
           listingCategory: category,
           saleOff: null,
           isAds: null,
+          isActive: (r as any).isActive ?? undefined,
           map: { lat: 0, lng: 0 },
         };
         return tool;
@@ -326,7 +455,8 @@ export async function GET(request: Request) {
   } catch (err: any) {
     console.error("/api/tools error:", err?.message || err);
     // Return the actual error message to help debugging while developing
-    const msg = typeof err?.message === 'string' ? err.message : 'Failed to fetch tools';
+    const msg =
+      typeof err?.message === "string" ? err.message : "Failed to fetch tools";
     return new NextResponse(msg, { status: 500 });
   }
 }
@@ -348,25 +478,31 @@ export async function POST(request: Request) {
       statusId,
     } = body || {};
 
-    if (!title || typeof title !== 'string' || !title.trim()) {
-      return new NextResponse('Title is required', { status: 400 });
+    if (!title || typeof title !== "string" || !title.trim()) {
+      return new NextResponse("Title is required", { status: 400 });
     }
 
     const envTable = process.env.TOOLS_TABLE?.trim();
     const candidates = [
       envTable,
-      'tools', 'Tools', 'public."Tools"', 'public.tools',
-      'tool', 'Tool', 'public."Tool"', 'public.tool',
+      "tools",
+      "Tools",
+      'public."Tools"',
+      "public.tools",
+      "tool",
+      "Tool",
+      'public."Tool"',
+      "public.tool",
     ].filter(Boolean) as string[];
 
     const parseIdent = (ident: string): { schema: string; table: string } => {
-      const defSchema = 'public';
-      if (ident.includes('.')) {
-        const [schemaRaw, tableRaw] = ident.split('.', 2);
-        const unquote = (s: string) => s.replace(/^"|"$/g, '');
+      const defSchema = "public";
+      if (ident.includes(".")) {
+        const [schemaRaw, tableRaw] = ident.split(".", 2);
+        const unquote = (s: string) => s.replace(/^"|"$/g, "");
         return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
       }
-      return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+      return { schema: defSchema, table: ident.replace(/^"|"$/g, "") };
     };
 
     const tryResolve = async () => {
@@ -377,7 +513,11 @@ export async function POST(request: Request) {
           [schema, table]
         );
         if (colsRes.rows.length) {
-          return { schema, table, columns: colsRes.rows.map((r: any) => r.column_name as string) };
+          return {
+            schema,
+            table,
+            columns: colsRes.rows.map((r: any) => r.column_name as string),
+          };
         }
       }
       return null;
@@ -385,7 +525,9 @@ export async function POST(request: Request) {
 
     const resolved = await tryResolve();
     if (!resolved) {
-      return new NextResponse('Tools table not found. Set TOOLS_TABLE env.', { status: 500 });
+      return new NextResponse("Tools table not found. Set TOOLS_TABLE env.", {
+        status: 500,
+      });
     }
 
     const { schema, table, columns } = resolved;
@@ -402,17 +544,37 @@ export async function POST(request: Request) {
 
     // Map body keys to actual DB columns when available
     const colMap: Record<string, string | undefined> = {
-      title: has(['Title','title','Name','name']),
-      description: has(['Description','description','Details','details']),
-      brand: has(['Brand','brand']),
-      model: has(['Model','model']),
-      rentalPricePerDay: has(['RentalPricePerDay','rentalpriceperday','rental_price_per_day','DailyPrice','dailyprice','daily_price','Price','price']),
-      rentalPricePerWeek: has(['RentalPricePerWeek','rentalpriceperweek','rental_price_per_week']),
-      categoryId: has(['CategoryId','categoryid','category_id']),
-      subCategoryId: has(['SubCategoryId','subcategoryid','sub_category_id']),
-  ownerId: has(['OwnerId','ownerid','owner_id','UserId','userid','user_id']),
-      isActive: has(['IsActive','isactive','is_active','Active','active']),
-      statusId: has(['StatusId','statusid','status_id']),
+      title: has(["Title", "title", "Name", "name"]),
+      description: has(["Description", "description", "Details", "details"]),
+      brand: has(["Brand", "brand"]),
+      model: has(["Model", "model"]),
+      rentalPricePerDay: has([
+        "RentalPricePerDay",
+        "rentalpriceperday",
+        "rental_price_per_day",
+        "DailyPrice",
+        "dailyprice",
+        "daily_price",
+        "Price",
+        "price",
+      ]),
+      rentalPricePerWeek: has([
+        "RentalPricePerWeek",
+        "rentalpriceperweek",
+        "rental_price_per_week",
+      ]),
+      categoryId: has(["CategoryId", "categoryid", "category_id"]),
+      subCategoryId: has(["SubCategoryId", "subcategoryid", "sub_category_id"]),
+      ownerId: has([
+        "OwnerId",
+        "ownerid",
+        "owner_id",
+        "UserId",
+        "userid",
+        "user_id",
+      ]),
+      isActive: has(["IsActive", "isactive", "is_active", "Active", "active"]),
+      statusId: has(["StatusId", "statusid", "status_id"]),
     };
 
     const insertCols: string[] = [];
@@ -429,30 +591,49 @@ export async function POST(request: Request) {
       values.push(val);
     };
 
-    addIf('title', String(title).trim());
-    addIf('description', description ? String(description).trim() : undefined);
-    addIf('brand', brand ? String(brand).trim() : undefined);
-    addIf('model', model ? String(model).trim() : undefined);
-    addIf('rentalPricePerDay', rentalPricePerDay != null ? Number(rentalPricePerDay) : undefined);
-    addIf('rentalPricePerWeek', rentalPricePerWeek != null ? Number(rentalPricePerWeek) : undefined);
-    addIf('categoryId', categoryId != null ? Number(categoryId) : undefined);
-    addIf('subCategoryId', subCategoryId != null ? Number(subCategoryId) : undefined);
+    addIf("title", String(title).trim());
+    addIf("description", description ? String(description).trim() : undefined);
+    addIf("brand", brand ? String(brand).trim() : undefined);
+    addIf("model", model ? String(model).trim() : undefined);
+    addIf(
+      "rentalPricePerDay",
+      rentalPricePerDay != null ? Number(rentalPricePerDay) : undefined
+    );
+    addIf(
+      "rentalPricePerWeek",
+      rentalPricePerWeek != null ? Number(rentalPricePerWeek) : undefined
+    );
+    addIf("categoryId", categoryId != null ? Number(categoryId) : undefined);
+    addIf(
+      "subCategoryId",
+      subCategoryId != null ? Number(subCategoryId) : undefined
+    );
     // ownerId is UUID string
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const ownerUuid = typeof ownerId === 'string' && uuidRegex.test(ownerId) ? ownerId : ownerId === undefined ? undefined : null;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const ownerUuid =
+      typeof ownerId === "string" && uuidRegex.test(ownerId)
+        ? ownerId
+        : ownerId === undefined
+        ? undefined
+        : null;
     if (ownerUuid === null) {
-      return new NextResponse('Invalid ownerId: must be a UUID string', { status: 400 });
+      return new NextResponse("Invalid ownerId: must be a UUID string", {
+        status: 400,
+      });
     }
     // Require ownerId if the table has a NOT NULL owner column
     if (colMap.ownerId && ownerUuid === undefined) {
-      return new NextResponse('ownerId is required', { status: 400 });
+      return new NextResponse("ownerId is required", { status: 400 });
     }
-    addIf('ownerId', ownerUuid);
-    addIf('isActive', isActive != null ? Boolean(isActive) : undefined);
-    addIf('statusId', statusId != null ? Number(statusId) : undefined);
+    addIf("ownerId", ownerUuid);
+    addIf("isActive", isActive != null ? Boolean(isActive) : undefined);
+    addIf("statusId", statusId != null ? Number(statusId) : undefined);
 
     if (!insertCols.length) {
-      return new NextResponse('No insertable fields for this schema', { status: 400 });
+      return new NextResponse("No insertable fields for this schema", {
+        status: 400,
+      });
     }
 
     const from = `"${schema}"."${table}"`;
@@ -465,12 +646,23 @@ export async function POST(request: Request) {
       [schema, table]
     );
     const pkCol: string | undefined = returningRes.rows[0]?.column_name;
-    const returningList = [pkCol, colMap.title, colMap.description, colMap.brand, colMap.model, colMap.rentalPricePerDay, colMap.categoryId, colMap.subCategoryId]
+    const returningList = [
+      pkCol,
+      colMap.title,
+      colMap.description,
+      colMap.brand,
+      colMap.model,
+      colMap.rentalPricePerDay,
+      colMap.categoryId,
+      colMap.subCategoryId,
+    ]
       .filter(Boolean)
       .map((c) => q(c as string))
-      .join(', ');
+      .join(", ");
 
-    const sql = `INSERT INTO ${from} (${insertCols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING ${returningList || '*'}`;
+    const sql = `INSERT INTO ${from} (${insertCols.join(
+      ", "
+    )}) VALUES (${placeholders.join(", ")}) RETURNING ${returningList || "*"}`;
     const ins = await query(sql, values);
     const r: any = ins.rows[0] || {};
 
@@ -482,12 +674,13 @@ export async function POST(request: Request) {
       description: r[colMap.description as string] ?? description ?? undefined,
       brand: r[colMap.brand as string] ?? brand ?? undefined,
       model: r[colMap.model as string] ?? model ?? undefined,
-      rentalPricePerDay: r[colMap.rentalPricePerDay as string] ?? rentalPricePerDay ?? 0,
+      rentalPricePerDay:
+        r[colMap.rentalPricePerDay as string] ?? rentalPricePerDay ?? 0,
     };
 
     return NextResponse.json(ui, { status: 201 });
   } catch (err: any) {
-    console.error('/api/tools POST error:', err?.message || err);
-    return new NextResponse('Failed to create tool', { status: 500 });
+    console.error("/api/tools POST error:", err?.message || err);
+    return new NextResponse("Failed to create tool", { status: 500 });
   }
 }

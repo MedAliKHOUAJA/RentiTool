@@ -25,6 +25,18 @@ async function resolveImages() {
     "Image",
     'public."Image"',
     "public.image",
+    "toolimages",
+    "ToolImages",
+    'public."ToolImages"',
+    "public.toolimages",
+    "toolimage",
+    "ToolImage",
+    'public."ToolImage"',
+    "public.toolimage",
+    "tool_images",
+    "Tool_Images",
+    'public."Tool_Images"',
+    "public.tool_images",
   ].filter(Boolean) as string[];
 
   for (const cand of candidates) {
@@ -36,9 +48,18 @@ async function resolveImages() {
     if (!colsRes.rows.length) continue;
     const cols: string[] = colsRes.rows.map((r: any) => r.column_name);
     const m = Object.fromEntries(cols.map((c) => [c.toLowerCase(), c]));
-    const pk = m["imageid"] || m["id"] || m["image_id"];
-    const toolCol = m["toolid"] || m["tool_id"];
-    const primaryCol = m["isprimarytoolimage"] || m["is_primary"] || m["isprimary"];
+    const pk =
+      m["imageid"] ||
+      m["id"] ||
+      m["image_id"] ||
+      m["toolimageid"] ||
+      m["tool_image_id"];
+    const toolCol = m["toolid"] || m["tool_id"] || m["toolid"];
+    const primaryCol =
+      m["isprimarytoolimage"] ||
+      m["is_primary"] ||
+      m["isprimary"] ||
+      m["is_primary_tool_image"];
     if (!pk || !toolCol) continue;
     return { schema, table, pk, toolCol, primaryCol } as const;
   }
@@ -52,15 +73,19 @@ export async function DELETE(
   try {
     const { id: toolId, imageId } = params;
     const resolved = await resolveImages();
-    if (!resolved) return new NextResponse("Images table not found", { status: 500 });
+    if (!resolved)
+      return new NextResponse("Images table not found", { status: 500 });
     const { schema, table, pk, toolCol } = resolved;
     const from = `${q(schema)}.${q(table)}`;
     const sql = `DELETE FROM ${from} WHERE ${q(pk)}=$1 AND ${q(toolCol)}=$2`;
     const res = await query(sql, [imageId, toolId]);
     return new NextResponse(null, { status: res.rowCount ? 204 : 404 });
   } catch (err: any) {
-    console.error('/api/tools/[id]/images/[imageId] DELETE error:', err?.message || err);
-    return new NextResponse('Failed to delete image', { status: 500 });
+    console.error(
+      "/api/tools/[id]/images/[imageId] DELETE error:",
+      err?.message || err
+    );
+    return new NextResponse("Failed to delete image", { status: 500 });
   }
 }
 
@@ -71,24 +96,36 @@ export async function PUT(
   try {
     const { id: toolId, imageId } = params;
     const resolved = await resolveImages();
-    if (!resolved) return new NextResponse('Images table not found', { status: 500 });
+    if (!resolved)
+      return new NextResponse("Images table not found", { status: 500 });
     const { schema, table, pk, toolCol, primaryCol } = resolved;
-    if (!primaryCol) return new NextResponse('Images schema invalid: missing primary flag column', { status: 500 });
+    if (!primaryCol)
+      return new NextResponse(
+        "Images schema invalid: missing primary flag column",
+        { status: 500 }
+      );
     const from = `${q(schema)}.${q(table)}`;
     // 1) Set target image as primary; if not found, don't alter others
     const setTarget = await query(
-      `UPDATE ${from} SET ${q(primaryCol)}=true WHERE ${q(pk)}=$1 AND ${q(toolCol)}=$2`,
+      `UPDATE ${from} SET ${q(primaryCol)}=true WHERE ${q(pk)}=$1 AND ${q(
+        toolCol
+      )}=$2`,
       [imageId, toolId]
     );
     if (!setTarget.rowCount) return new NextResponse(null, { status: 404 });
     // 2) Clear primary from other images of the same tool
     await query(
-      `UPDATE ${from} SET ${q(primaryCol)}=false WHERE ${q(toolCol)}=$1 AND ${q(pk)}<>$2`,
+      `UPDATE ${from} SET ${q(primaryCol)}=false WHERE ${q(toolCol)}=$1 AND ${q(
+        pk
+      )}<>$2`,
       [toolId, imageId]
     );
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
-    console.error('/api/tools/[id]/images/[imageId] PUT error:', err?.message || err);
-    return new NextResponse('Failed to set primary image', { status: 500 });
+    console.error(
+      "/api/tools/[id]/images/[imageId] PUT error:",
+      err?.message || err
+    );
+    return new NextResponse("Failed to set primary image", { status: 500 });
   }
 }

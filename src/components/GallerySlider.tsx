@@ -44,14 +44,28 @@ export default function GallerySlider({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
-  const dragRef = useRef<{ dragging: boolean; startX: number; startY: number; lastX: number; lastY: number }>({ dragging: false, startX: 0, startY: 0, lastX: 0, lastY: 0 });
-  const pinchRef = useRef<{ pinching: boolean; startDist: number; startZoom: number }>({ pinching: false, startDist: 0, startZoom: 1 });
+  const dragRef = useRef<{
+    dragging: boolean;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+  }>({ dragging: false, startX: 0, startY: 0, lastX: 0, lastY: 0 });
+  const pinchRef = useRef<{
+    pinching: boolean;
+    startDist: number;
+    startZoom: number;
+  }>({ pinching: false, startDist: 0, startZoom: 1 });
   const [hoverActive, setHoverActive] = useState(false);
-  const [hoverOrigin, setHoverOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [hoverOrigin, setHoverOrigin] = useState<{ x: number; y: number }>({
+    x: 50,
+    y: 50,
+  });
   // Ensure we always have at least one image to render
-  const images = (Array.isArray(galleryImgs) && galleryImgs.filter(Boolean).length > 0)
-    ? galleryImgs.filter(Boolean)
-    : ["/images/placeholder-large.png"];
+  const images =
+    Array.isArray(galleryImgs) && galleryImgs.filter(Boolean).length > 0
+      ? galleryImgs.filter(Boolean)
+      : ["/images/placeholder-large.png"];
 
   // Keep current index within bounds if images change
   useEffect(() => {
@@ -72,7 +86,8 @@ export default function GallerySlider({
     return () => ro.disconnect();
   }, [isPreviewOpen]);
 
-  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+  const clamp = (val: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, val));
   const clampOffset = (x: number, y: number, z: number) => {
     // Compute bounds so image cannot be dragged out completely
     const maxX = Math.max(0, (z - 1) * (containerSize.w / 2));
@@ -122,15 +137,21 @@ export default function GallerySlider({
     if (!dragRef.current.dragging) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
-    const { x, y } = clampOffset(dragRef.current.lastX + dx, dragRef.current.lastY + dy, zoom);
+    const { x, y } = clampOffset(
+      dragRef.current.lastX + dx,
+      dragRef.current.lastY + dy,
+      zoom
+    );
     setOffset({ x, y });
   };
   const onMouseUp: React.MouseEventHandler<HTMLDivElement> = () => {
     dragRef.current.dragging = false;
   };
 
-  const dist = (t1: { clientX: number; clientY: number }, t2: { clientX: number; clientY: number }) =>
-    Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+  const dist = (
+    t1: { clientX: number; clientY: number },
+    t2: { clientX: number; clientY: number }
+  ) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
   const onTouchStart: React.TouchEventHandler<HTMLDivElement> = (e) => {
     if (e.touches.length === 2) {
       pinchRef.current.pinching = true;
@@ -157,7 +178,11 @@ export default function GallerySlider({
     } else if (dragRef.current.dragging && e.touches.length === 1) {
       const dx = e.touches[0].clientX - dragRef.current.startX;
       const dy = e.touches[0].clientY - dragRef.current.startY;
-      const { x, y } = clampOffset(dragRef.current.lastX + dx, dragRef.current.lastY + dy, zoom);
+      const { x, y } = clampOffset(
+        dragRef.current.lastX + dx,
+        dragRef.current.lastY + dy,
+        zoom
+      );
       setOffset({ x, y });
     }
   };
@@ -202,10 +227,13 @@ export default function GallerySlider({
 
   const showArrows = loaded && navigation && images.length > 1;
   const showDots = navigation && images.length > 1;
-  const hoverStyle = hoverActive && hoverZoom && !isPreviewOpen ? {
-    transform: `scale(${hoverZoomScale})`,
-    transformOrigin: `${hoverOrigin.x}% ${hoverOrigin.y}%`,
-  } as React.CSSProperties : undefined;
+  const hoverStyle =
+    hoverActive && hoverZoom && !isPreviewOpen
+      ? ({
+          transform: `scale(${hoverZoomScale})`,
+          transformOrigin: `${hoverOrigin.x}% ${hoverOrigin.y}%`,
+        } as React.CSSProperties)
+      : undefined;
 
   const updateHoverOrigin = (e: React.MouseEvent<HTMLElement>) => {
     if (!hoverZoom) return;
@@ -214,7 +242,10 @@ export default function GallerySlider({
     const rect = el.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setHoverOrigin({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+    setHoverOrigin({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    });
   };
 
   return (
@@ -229,7 +260,7 @@ export default function GallerySlider({
         {...handlers}
       >
         {/* Main image */}
-  <div className={`relative w-full overflow-hidden ${galleryClass}`}>
+        <div className={`relative w-full overflow-hidden ${galleryClass}`}>
           {href && !enablePreview ? (
             <Link
               href={href}
@@ -405,7 +436,10 @@ export default function GallerySlider({
                 <button
                   type="button"
                   className="ml-1 px-3 h-10 rounded-full bg-white/90 hover:bg-white text-neutral-800 flex items-center justify-center text-sm"
-                  onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }}
+                  onClick={() => {
+                    setZoom(1);
+                    setOffset({ x: 0, y: 0 });
+                  }}
                   aria-label="Reset zoom"
                 >
                   Reset

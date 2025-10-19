@@ -13,23 +13,31 @@ export async function GET(req: Request) {
     }
 
     // CategoryId from screenshots is an integer; attempt number, but pass as text if not numeric
-    const categoryIdNumeric = /^-?\d+$/.test(rawCategoryId) ? Number(rawCategoryId) : rawCategoryId;
+    const categoryIdNumeric = /^-?\d+$/.test(rawCategoryId)
+      ? Number(rawCategoryId)
+      : rawCategoryId;
 
     const envTable = process.env.TOOLS_TABLE?.trim();
     const candidates = [
       envTable,
-      'tools', 'Tools', 'public."Tools"', 'public.tools',
-      'tool', 'Tool', 'public."Tool"', 'public.tool',
+      "tools",
+      "Tools",
+      'public."Tools"',
+      "public.tools",
+      "tool",
+      "Tool",
+      'public."Tool"',
+      "public.tool",
     ].filter(Boolean) as string[];
 
     const parseIdent = (ident: string): { schema: string; table: string } => {
-      const defSchema = 'public';
-      if (ident.includes('.')) {
-        const [schemaRaw, tableRaw] = ident.split('.', 2);
-        const unquote = (s: string) => s.replace(/^"|"$/g, '');
+      const defSchema = "public";
+      if (ident.includes(".")) {
+        const [schemaRaw, tableRaw] = ident.split(".", 2);
+        const unquote = (s: string) => s.replace(/^"|"$/g, "");
         return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
       }
-      return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+      return { schema: defSchema, table: ident.replace(/^"|"$/g, "") };
     };
 
     const tryResolve = async () => {
@@ -48,7 +56,9 @@ export async function GET(req: Request) {
 
     const resolved = await tryResolve();
     if (!resolved) {
-      return new NextResponse('Tools table not found. Set TOOLS_TABLE env.', { status: 500 });
+      return new NextResponse("Tools table not found. Set TOOLS_TABLE env.", {
+        status: 500,
+      });
     }
     const { schema, table } = resolved;
 
@@ -71,10 +81,19 @@ export async function GET(req: Request) {
       [schema, table]
     );
 
-    const fkRows: Array<{ fk_column: string; ref_schema: string; ref_table: string; ref_column: string }> = fkRes.rows;
-    const subFk = fkRows.find(r => /sub\s*_?category/i.test(r.fk_column) || /sub\s*_?category/i.test(r.ref_table));
+    const fkRows: Array<{
+      fk_column: string;
+      ref_schema: string;
+      ref_table: string;
+      ref_column: string;
+    }> = fkRes.rows;
+    const subFk = fkRows.find(
+      (r) =>
+        /sub\s*_?category/i.test(r.fk_column) ||
+        /sub\s*_?category/i.test(r.ref_table)
+    );
     if (!subFk) {
-      return NextResponse.json({ valueType: 'number', options: [] });
+      return NextResponse.json({ valueType: "number", options: [] });
     }
 
     const refSchema = subFk.ref_schema;
@@ -95,22 +114,43 @@ export async function GET(req: Request) {
       `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`,
       [refSchema, refTable]
     );
-    const cols = colsRes.rows as Array<{ column_name: string; data_type: string }>;
-    const lowerMap: Record<string, string> = Object.fromEntries(cols.map(c => [c.column_name.toLowerCase(), c.column_name]));
+    const cols = colsRes.rows as Array<{
+      column_name: string;
+      data_type: string;
+    }>;
+    const lowerMap: Record<string, string> = Object.fromEntries(
+      cols.map((c) => [c.column_name.toLowerCase(), c.column_name])
+    );
 
-    const labelCandidateNames = ['subcategoryname','name','title','label','description','sub_category_name'];
-    const labelCol = labelCandidateNames.map(n => lowerMap[n]).find(Boolean) || refPk;
+    const labelCandidateNames = [
+      "subcategoryname",
+      "name",
+      "title",
+      "label",
+      "description",
+      "sub_category_name",
+    ];
+    const labelCol =
+      labelCandidateNames.map((n) => lowerMap[n]).find(Boolean) || refPk;
 
     // Find the CategoryId column on SubCategory table
-    const catIdCandidateNames = ['categoryid','category_id','category'];
-    const categoryRefCol = catIdCandidateNames.map(n => lowerMap[n]).find(Boolean);
+    const catIdCandidateNames = ["categoryid", "category_id", "category"];
+    const categoryRefCol = catIdCandidateNames
+      .map((n) => lowerMap[n])
+      .find(Boolean);
     if (!categoryRefCol) {
-      return new NextResponse('Category reference column not found on SubCategory table', { status: 500 });
+      return new NextResponse(
+        "Category reference column not found on SubCategory table",
+        { status: 500 }
+      );
     }
 
     // Determine value type based on PK type
-    const pkTypeRow = cols.find(c => c.column_name === refPk);
-    const valueType: 'number'|'string' = pkTypeRow && /int|numeric|double|real|decimal/i.test(pkTypeRow.data_type) ? 'number' : 'string';
+    const pkTypeRow = cols.find((c) => c.column_name === refPk);
+    const valueType: "number" | "string" =
+      pkTypeRow && /int|numeric|double|real|decimal/i.test(pkTypeRow.data_type)
+        ? "number"
+        : "string";
 
     const qq = (x: string) => `"${x}"`;
     const fromRef = `${qq(refSchema)}.${qq(refTable)}`;
@@ -124,11 +164,14 @@ export async function GET(req: Request) {
        LIMIT 200`,
       [categoryIdNumeric as any]
     );
-    const options = optsRes.rows.map((r: any) => ({ value: r.value, label: String(r.label ?? r.value) }));
+    const options = optsRes.rows.map((r: any) => ({
+      value: r.value,
+      label: String(r.label ?? r.value),
+    }));
 
     return NextResponse.json({ valueType, options });
   } catch (err: any) {
-    console.error('/api/tools/meta/subcategories error:', err?.message || err);
-    return new NextResponse('Failed to load subcategories', { status: 500 });
+    console.error("/api/tools/meta/subcategories error:", err?.message || err);
+    return new NextResponse("Failed to load subcategories", { status: 500 });
   }
 }

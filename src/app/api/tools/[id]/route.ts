@@ -183,17 +183,23 @@ export async function GET(
       const imagesEnv = process.env.IMAGES_TABLE?.trim();
       const imgCandidates = [
         imagesEnv,
-        'images', 'Images', 'public."Images"', 'public.images',
-        'image', 'Image', 'public."Image"', 'public.image'
+        "images",
+        "Images",
+        'public."Images"',
+        "public.images",
+        "image",
+        "Image",
+        'public."Image"',
+        "public.image",
       ].filter(Boolean) as string[];
       const parseIdent = (ident: string): { schema: string; table: string } => {
-        const defSchema = 'public';
-        if (ident.includes('.')) {
-          const [schemaRaw, tableRaw] = ident.split('.', 2);
-          const unquote = (s: string) => s.replace(/^"|"$/g, '');
+        const defSchema = "public";
+        if (ident.includes(".")) {
+          const [schemaRaw, tableRaw] = ident.split(".", 2);
+          const unquote = (s: string) => s.replace(/^"|"$/g, "");
           return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
         }
-        return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+        return { schema: defSchema, table: ident.replace(/^"|"$/g, "") };
       };
       for (const cand of imgCandidates) {
         const { schema: ischema, table: itable } = parseIdent(cand!);
@@ -202,19 +208,26 @@ export async function GET(
           [ischema, itable]
         );
         if (!colsRes.rows.length) continue;
-        const icols: string[] = colsRes.rows.map((r:any)=>r.column_name);
-        const imap: Record<string,string> = Object.fromEntries(icols.map(c=>[c.toLowerCase(), c]));
-        const ipk = imap['imageid'] || imap['id'] || imap['image_id'];
-        const itool = imap['toolid'] || imap['tool_id'];
-        const iprimary = imap['isprimarytoolimage'] || imap['is_primary'] || imap['isprimary'];
+        const icols: string[] = colsRes.rows.map((r: any) => r.column_name);
+        const imap: Record<string, string> = Object.fromEntries(
+          icols.map((c) => [c.toLowerCase(), c])
+        );
+        const ipk = imap["imageid"] || imap["id"] || imap["image_id"];
+        const itool = imap["toolid"] || imap["tool_id"];
+        const iprimary =
+          imap["isprimarytoolimage"] || imap["is_primary"] || imap["isprimary"];
         if (!ipk || !itool) continue;
         const qq = (s: string) => `"${s}"`;
         const from = `${qq(ischema)}.${qq(itable)}`;
-        const order = iprimary ? `${qq(iprimary)} DESC, ${qq(ipk)} DESC` : `${qq(ipk)} DESC`;
-        const sqlImg = `SELECT ${qq(ipk)} as id${iprimary ? `, ${qq(iprimary)} as is_primary` : ''} FROM ${from} WHERE ${qq(itool)} = $1 ORDER BY ${order} LIMIT 20`;
+        const order = iprimary
+          ? `${qq(iprimary)} DESC, ${qq(ipk)} DESC`
+          : `${qq(ipk)} DESC`;
+        const sqlImg = `SELECT ${qq(ipk)} as id${
+          iprimary ? `, ${qq(iprimary)} as is_primary` : ""
+        } FROM ${from} WHERE ${qq(itool)} = $1 ORDER BY ${order} LIMIT 20`;
         const imgRes = await query(sqlImg, [toolId]);
         if (imgRes.rows.length) {
-          const urls = imgRes.rows.map((row:any) => `/api/images/${row.id}`);
+          const urls = imgRes.rows.map((row: any) => `/api/images/${row.id}`);
           galleryImgs = urls;
           featuredImage = urls[0];
         }
@@ -222,7 +235,10 @@ export async function GET(
       }
     } catch (e) {
       // keep placeholders on failure
-      console.warn('Image load for single tool failed:', (e as any)?.message || e);
+      console.warn(
+        "Image load for single tool failed:",
+        (e as any)?.message || e
+      );
     }
 
     // Include ownerId in API response for client-side ownership checks
@@ -267,18 +283,24 @@ export async function DELETE(
     const envTable = process.env.TOOLS_TABLE?.trim();
     const candidates = [
       envTable,
-      'tools','Tools','public."Tools"','public.tools',
-      'tool','Tool','public."Tool"','public.tool',
+      "tools",
+      "Tools",
+      'public."Tools"',
+      "public.tools",
+      "tool",
+      "Tool",
+      'public."Tool"',
+      "public.tool",
     ].filter(Boolean) as string[];
 
     const parseIdent = (ident: string): { schema: string; table: string } => {
-      const defSchema = 'public';
-      if (ident.includes('.')) {
-        const [schemaRaw, tableRaw] = ident.split('.', 2);
-        const unquote = (s: string) => s.replace(/^"|"$/g, '');
+      const defSchema = "public";
+      if (ident.includes(".")) {
+        const [schemaRaw, tableRaw] = ident.split(".", 2);
+        const unquote = (s: string) => s.replace(/^"|"$/g, "");
         return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
       }
-      return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+      return { schema: defSchema, table: ident.replace(/^"|"$/g, "") };
     };
 
     const tryResolve = async () => {
@@ -297,7 +319,9 @@ export async function DELETE(
 
     const resolved = await tryResolve();
     if (!resolved) {
-      return new NextResponse('Tools table not found. Set TOOLS_TABLE env.', { status: 500 });
+      return new NextResponse("Tools table not found. Set TOOLS_TABLE env.", {
+        status: 500,
+      });
     }
     const { schema, table } = resolved;
 
@@ -312,7 +336,9 @@ export async function DELETE(
     );
     const pkCol: string | undefined = pkRes.rows[0]?.column_name;
     if (!pkCol) {
-      return new NextResponse('Primary key not found for tools table', { status: 500 });
+      return new NextResponse("Primary key not found for tools table", {
+        status: 500,
+      });
     }
 
     const q = (s: string) => `"${s}"`;
@@ -323,7 +349,7 @@ export async function DELETE(
     return new NextResponse(null, { status: res.rowCount ? 204 : 404 });
   } catch (err: any) {
     console.error(`/api/tools/${id} DELETE error:`, err?.message || err);
-    return new NextResponse('Failed to delete tool', { status: 500 });
+    return new NextResponse("Failed to delete tool", { status: 500 });
   }
 }
 
@@ -351,18 +377,24 @@ export async function PUT(
     const envTable = process.env.TOOLS_TABLE?.trim();
     const candidates = [
       envTable,
-      'tools','Tools','public."Tools"','public.tools',
-      'tool','Tool','public."Tool"','public.tool',
+      "tools",
+      "Tools",
+      'public."Tools"',
+      "public.tools",
+      "tool",
+      "Tool",
+      'public."Tool"',
+      "public.tool",
     ].filter(Boolean) as string[];
 
     const parseIdent = (ident: string): { schema: string; table: string } => {
-      const defSchema = 'public';
-      if (ident.includes('.')) {
-        const [schemaRaw, tableRaw] = ident.split('.', 2);
-        const unquote = (s: string) => s.replace(/^"|"$/g, '');
+      const defSchema = "public";
+      if (ident.includes(".")) {
+        const [schemaRaw, tableRaw] = ident.split(".", 2);
+        const unquote = (s: string) => s.replace(/^"|"$/g, "");
         return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
       }
-      return { schema: defSchema, table: ident.replace(/^"|"$/g, '') };
+      return { schema: defSchema, table: ident.replace(/^"|"$/g, "") };
     };
 
     const tryResolve = async () => {
@@ -373,7 +405,11 @@ export async function PUT(
           [schema, table]
         );
         if (colsRes.rows.length) {
-          return { schema, table, columns: colsRes.rows.map((r: any) => r.column_name as string) };
+          return {
+            schema,
+            table,
+            columns: colsRes.rows.map((r: any) => r.column_name as string),
+          };
         }
       }
       return null;
@@ -381,10 +417,14 @@ export async function PUT(
 
     const resolved = await tryResolve();
     if (!resolved) {
-      return new NextResponse('Tools table not found. Set TOOLS_TABLE env.', { status: 500 });
+      return new NextResponse("Tools table not found. Set TOOLS_TABLE env.", {
+        status: 500,
+      });
     }
     const { schema, table, columns } = resolved;
-    const lowerMap: Record<string, string> = Object.fromEntries(columns.map((c: string) => [c.toLowerCase(), c]));
+    const lowerMap: Record<string, string> = Object.fromEntries(
+      columns.map((c: string) => [c.toLowerCase(), c])
+    );
     const has = (names: string[]) => {
       for (const n of names) {
         const hit = lowerMap[n.toLowerCase()];
@@ -404,21 +444,43 @@ export async function PUT(
     );
     const pkCol: string | undefined = pkRes.rows[0]?.column_name;
     if (!pkCol) {
-      return new NextResponse('Primary key not found for tools table', { status: 500 });
+      return new NextResponse("Primary key not found for tools table", {
+        status: 500,
+      });
     }
 
     const colMap: Record<string, string | undefined> = {
-      title: has(['Title','title','Name','name']),
-      description: has(['Description','description','Details','details']),
-      brand: has(['Brand','brand']),
-      model: has(['Model','model']),
-      rentalPricePerDay: has(['RentalPricePerDay','rentalpriceperday','rental_price_per_day','DailyPrice','dailyprice','daily_price','Price','price']),
-      rentalPricePerWeek: has(['RentalPricePerWeek','rentalpriceperweek','rental_price_per_week']),
-      categoryId: has(['CategoryId','categoryid','category_id']),
-      subCategoryId: has(['SubCategoryId','subcategoryid','sub_category_id']),
-      ownerId: has(['OwnerId','ownerid','owner_id','UserId','userid','user_id']),
-      isActive: has(['IsActive','isactive','is_active','Active','active']),
-      statusId: has(['StatusId','statusid','status_id']),
+      title: has(["Title", "title", "Name", "name"]),
+      description: has(["Description", "description", "Details", "details"]),
+      brand: has(["Brand", "brand"]),
+      model: has(["Model", "model"]),
+      rentalPricePerDay: has([
+        "RentalPricePerDay",
+        "rentalpriceperday",
+        "rental_price_per_day",
+        "DailyPrice",
+        "dailyprice",
+        "daily_price",
+        "Price",
+        "price",
+      ]),
+      rentalPricePerWeek: has([
+        "RentalPricePerWeek",
+        "rentalpriceperweek",
+        "rental_price_per_week",
+      ]),
+      categoryId: has(["CategoryId", "categoryid", "category_id"]),
+      subCategoryId: has(["SubCategoryId", "subcategoryid", "sub_category_id"]),
+      ownerId: has([
+        "OwnerId",
+        "ownerid",
+        "owner_id",
+        "UserId",
+        "userid",
+        "user_id",
+      ]),
+      isActive: has(["IsActive", "isactive", "is_active", "Active", "active"]),
+      statusId: has(["StatusId", "statusid", "status_id"]),
     };
 
     const sets: string[] = [];
@@ -432,38 +494,56 @@ export async function PUT(
       values.push(val);
     };
 
-    addIf('title', title != null ? String(title).trim() : undefined);
-    addIf('description', description != null ? String(description).trim() : undefined);
-    addIf('brand', brand != null ? String(brand).trim() : undefined);
-    addIf('model', model != null ? String(model).trim() : undefined);
-    addIf('rentalPricePerDay', rentalPricePerDay != null ? Number(rentalPricePerDay) : undefined);
-    addIf('rentalPricePerWeek', rentalPricePerWeek != null ? Number(rentalPricePerWeek) : undefined);
-    addIf('categoryId', categoryId != null ? Number(categoryId) : undefined);
-    addIf('subCategoryId', subCategoryId != null ? Number(subCategoryId) : undefined);
+    addIf("title", title != null ? String(title).trim() : undefined);
+    addIf(
+      "description",
+      description != null ? String(description).trim() : undefined
+    );
+    addIf("brand", brand != null ? String(brand).trim() : undefined);
+    addIf("model", model != null ? String(model).trim() : undefined);
+    addIf(
+      "rentalPricePerDay",
+      rentalPricePerDay != null ? Number(rentalPricePerDay) : undefined
+    );
+    addIf(
+      "rentalPricePerWeek",
+      rentalPricePerWeek != null ? Number(rentalPricePerWeek) : undefined
+    );
+    addIf("categoryId", categoryId != null ? Number(categoryId) : undefined);
+    addIf(
+      "subCategoryId",
+      subCategoryId != null ? Number(subCategoryId) : undefined
+    );
     if (ownerId !== undefined) {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const ownerUuid = typeof ownerId === 'string' && uuidRegex.test(ownerId) ? ownerId : null;
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const ownerUuid =
+        typeof ownerId === "string" && uuidRegex.test(ownerId) ? ownerId : null;
       if (ownerUuid === null) {
-        return new NextResponse('Invalid ownerId: must be a UUID string', { status: 400 });
+        return new NextResponse("Invalid ownerId: must be a UUID string", {
+          status: 400,
+        });
       }
-      addIf('ownerId', ownerUuid);
+      addIf("ownerId", ownerUuid);
     }
-    addIf('isActive', isActive != null ? Boolean(isActive) : undefined);
-    addIf('statusId', statusId != null ? Number(statusId) : undefined);
+    addIf("isActive", isActive != null ? Boolean(isActive) : undefined);
+    addIf("statusId", statusId != null ? Number(statusId) : undefined);
 
     if (!sets.length) {
-      return new NextResponse('No updatable fields provided', { status: 400 });
+      return new NextResponse("No updatable fields provided", { status: 400 });
     }
 
     const from = `${q(schema)}.${q(table)}`;
-    const sql = `UPDATE ${from} SET ${sets.join(', ')} WHERE ${q(pkCol)} = $${values.length + 1} RETURNING ${q(pkCol)}`;
+    const sql = `UPDATE ${from} SET ${sets.join(", ")} WHERE ${q(pkCol)} = $${
+      values.length + 1
+    } RETURNING ${q(pkCol)}`;
     const res = await query(sql, [...values, id]);
     if (!res.rowCount) {
-      return new NextResponse('Tool not found', { status: 404 });
+      return new NextResponse("Tool not found", { status: 404 });
     }
     return NextResponse.json({ id: res.rows[0][pkCol] });
   } catch (err: any) {
     console.error(`/api/tools/${id} PUT error:`, err?.message || err);
-    return new NextResponse('Failed to update tool', { status: 500 });
+    return new NextResponse("Failed to update tool", { status: 500 });
   }
 }

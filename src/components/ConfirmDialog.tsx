@@ -28,8 +28,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-xl p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{title}</h3>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">{description}</p>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+          {title}
+        </h3>
+        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
+          {description}
+        </p>
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
