@@ -12,6 +12,7 @@ import PrevBtn from "./PrevBtn";
 import NextBtn from "./NextBtn";
 import { variants } from "@/utils/animationVariants";
 import { useWindowSize } from "react-use";
+import { Route } from "next";
 
 export interface SectionSliderNewCategoriesProps {
   className?: string;
@@ -27,7 +28,7 @@ export interface SectionSliderNewCategoriesProps {
 const DEMO_CATS: TaxonomyType[] = [
   {
     id: "1",
-    href: "/listing-stay-map",
+    href: "/listing-stay-map" as Route,
     name: "Nature House",
     taxonomy: "category",
     count: 17288,
@@ -36,8 +37,8 @@ const DEMO_CATS: TaxonomyType[] = [
   },
   {
     id: "2",
-    href: "/listing-stay-map",
-    name: "Wooden house",
+    href: "/listing-stay-map" as Route,
+    name: "Wooden house", 
     taxonomy: "category",
     count: 2118,
     thumbnail:
@@ -45,7 +46,7 @@ const DEMO_CATS: TaxonomyType[] = [
   },
   {
     id: "3",
-    href: "/listing-stay-map",
+    href: "/listing-stay-map" as Route,
     name: "Houseboat",
     taxonomy: "category",
     count: 36612,
@@ -54,7 +55,7 @@ const DEMO_CATS: TaxonomyType[] = [
   },
   {
     id: "4",
-    href: "/listing-stay-map",
+    href: "/listing-stay-map" as Route,
     name: "Farm House",
     taxonomy: "category",
     count: 18188,
@@ -63,7 +64,7 @@ const DEMO_CATS: TaxonomyType[] = [
   },
   {
     id: "5",
-    href: "/listing-stay-map",
+    href: "/listing-stay-map" as Route,
     name: "Dome House",
     taxonomy: "category",
     count: 22288,
@@ -72,7 +73,7 @@ const DEMO_CATS: TaxonomyType[] = [
   },
   {
     id: "6",
-    href: "/listing-stay-map",
+    href: "/listing-stay-map" as Route,
     name: "Dome House",
     taxonomy: "category",
     count: 188288,
@@ -81,7 +82,7 @@ const DEMO_CATS: TaxonomyType[] = [
   },
   {
     id: "7",
-    href: "/listing-stay-map",
+    href: "/listing-stay-map" as Route,
     name: "Wooden house",
     taxonomy: "category",
     count: 2118,
@@ -90,7 +91,7 @@ const DEMO_CATS: TaxonomyType[] = [
   },
   {
     id: "8",
-    href: "/listing-stay-map",
+    href: "/listing-stay-map" as Route,
     name: "Wooden Dome",
     taxonomy: "category",
     count: 515,

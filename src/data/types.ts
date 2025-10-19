@@ -1,5 +1,6 @@
 import { Route } from "@/routers/types";
 import { StaticImageData } from "next/image";
+import { Review } from "@/features/reviews/types";
 
 //  ######  CustomLink  ######## //
 export interface CustomLink {
@@ -18,7 +19,7 @@ export interface TaxonomyType {
   desc?: string;
   color?: TwMainColor | string;
   taxonomy: "category" | "tag";
-  listingType?: "stay" | "experiences" | "car";
+  listingType?: "stay" | "experiences" | "car" | "tool";
 }
 
 export interface AuthorType {
@@ -140,4 +141,29 @@ export interface CarDataType {
     lat: number;
     lng: number;
   };
+}
+
+//
+export interface ToolDataType {
+  id: string | number;
+  author: AuthorType;
+  date: string;
+  href: Route<string>;
+  title: string;
+  featuredImage: StaticImageData | string;
+  commentCount: number;
+  viewCount: number;
+  address: string;
+  reviewStart: number;
+  reviewCount: number;
+  like: boolean;
+  price: string;
+  listingCategory: TaxonomyType;
+  saleOff?: string | null;
+  isAds?: boolean | null;
+  map: {
+    lat: number;
+    lng: number;
+  };
+  reviews?: Review[];
 }

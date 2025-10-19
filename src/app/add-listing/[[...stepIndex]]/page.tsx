@@ -1,6 +1,6 @@
 import React from "react";
 import PageAddListing1 from "./PageAddListing1";
-import PageAddListing10 from "./PageAddListing10";
+
 import PageAddListing2 from "./PageAddListing2";
 import PageAddListing3 from "./PageAddListing3";
 import PageAddListing4 from "./PageAddListing4";
@@ -45,9 +45,6 @@ const Page = ({
       break;
     case 9:
       ContentComponent = PageAddListing9;
-      break;
-    case 10:
-      ContentComponent = PageAddListing10;
       break;
 
     default:

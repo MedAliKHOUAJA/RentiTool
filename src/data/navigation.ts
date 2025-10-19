@@ -65,29 +65,21 @@ const demoChildMenus: NavItemType[] = [
   {
     id: ncNanoId(),
     href: "/",
-    name: "Online booking",
-  },
-  {
-    id: ncNanoId(),
-    href: "/home-2",
-    name: "Real estate",
-    isNew: true,
-  },
-  {
-    id: ncNanoId(),
-    href: "/home-3",
-    name: "Home 3",
-    isNew: true,
+    name: "Accueil RentiTool",
   },
 ];
 
+const accountChildMenus: NavItemType[] = [
+  { id: ncNanoId(), href: "/account/profile", name: "Mon Profil" },
+  { id: ncNanoId(), href: "/account/dashboard", name: "Mon Tableau de Bord" },
+  { id: ncNanoId(), href: "/account/cards", name: "Mes Cartes de Visite" },
+];
+
 const otherPageChildMenus: NavItemType[] = [
-  { id: ncNanoId(), href: "/blog", name: "Blog page" },
-  { id: ncNanoId(), href: "/blog/single" as Route, name: "Blog single" },
-  { id: ncNanoId(), href: "/about", name: "About" },
-  { id: ncNanoId(), href: "/contact", name: "Contact us" },
-  { id: ncNanoId(), href: "/login", name: "Login" },
-  { id: ncNanoId(), href: "/signup", name: "Signup" },
+  { id: ncNanoId(), href: "/faq", name: "FAQ" },
+  { id: ncNanoId(), href: "/contact", name: "Contact" },
+  { id: ncNanoId(), href: "/login", name: "Connexion" },
+  { id: ncNanoId(), href: "/signup", name: "Inscription" },
 ];
 
 const templatesChildrenMenus: NavItemType[] = [
@@ -174,112 +166,25 @@ export const NAVIGATION_DEMO: NavItemType[] = [
   },
   {
     id: ncNanoId(),
-    href: "/",
-    name: "Five columns",
-    type: "megaMenu",
-    megaMenu: megaMenuDemo,
+    href: "/tools",
+    name: "Outils",
   },
   {
     id: ncNanoId(),
-    href: "/listing-stay",
-    name: "Listing Page",
+    href: "/account/profile",
+    name: "Mon Compte",
     type: "dropdown",
-    children: [
-      {
-        id: ncNanoId(),
-        href: "/listing-stay",
-        name: "Stay listings",
-        type: "dropdown",
-        children: [
-          { id: ncNanoId(), href: "/listing-stay", name: "Stay page" },
-          {
-            id: ncNanoId(),
-            href: "/listing-stay-map",
-            name: "Stay page (map)",
-          },
-          { id: ncNanoId(), href: "/listing-stay-detail", name: "Stay Detail" },
-        ],
-      },
-
-      //
-      {
-        id: ncNanoId(),
-        href: "/listing-experiences",
-        name: "Experiences listings",
-        type: "dropdown",
-        children: [
-          {
-            id: ncNanoId(),
-            href: "/listing-experiences",
-            name: "Experiences page",
-          },
-          {
-            id: ncNanoId(),
-            href: "/listing-experiences-map",
-            name: "Experiences page (map)",
-          },
-          {
-            id: ncNanoId(),
-            href: "/listing-experiences-detail",
-            name: "Experiences Detail",
-          },
-        ],
-      },
-
-      //
-      {
-        id: ncNanoId(),
-        href: "/listing-car",
-        name: "Cars listings",
-        type: "dropdown",
-        children: [
-          { id: ncNanoId(), href: "/listing-car", name: "Cars page" },
-          { id: ncNanoId(), href: "/listing-car-map", name: "Cars page (map)" },
-          { id: ncNanoId(), href: "/listing-car-detail", name: "Car Detail" },
-        ],
-      },
-
-      //
-      {
-        id: ncNanoId(),
-        href: "/listing-real-estate",
-        name: "Real Estate Listings",
-        type: "dropdown",
-        children: [
-          {
-            id: ncNanoId(),
-            href: "/listing-real-estate",
-            name: "Real Estate Listings",
-          },
-          {
-            id: ncNanoId(),
-            href: "/listing-real-estate-map",
-            name: "Real Estate Maps",
-          },
-        ],
-      },
-      //
-      {
-        id: ncNanoId(),
-        href: "/listing-flights",
-        name: "Flights listings",
-      },
-    ],
+    children: accountChildMenus,
   },
   {
     id: ncNanoId(),
-    href: "/author",
-    name: "Templates",
-    type: "dropdown",
-    children: templatesChildrenMenus,
+    href: "/faq",
+    name: "FAQ",
   },
-
   {
     id: ncNanoId(),
-    href: "/blog",
-    name: "Other pages",
-    type: "dropdown",
-    children: otherPageChildMenus,
+    href: "/contact",
+    name: "Contact",
   },
 ];
 
@@ -296,13 +201,13 @@ export const NAVIGATION_DEMO_2: NavItemType[] = [
   //
   {
     id: ncNanoId(),
-    href: "/listing-stay",
+    href: "/listing-stay" as Route,
     name: "Listing pages",
     children: [
-      { id: ncNanoId(), href: "/listing-stay", name: "Stay listings" },
+      { id: ncNanoId(), href: "/listing-stay" as Route, name: "Stay listings" },
       {
         id: ncNanoId(),
-        href: "/listing-stay-map",
+        href: "/listing-stay-map" as Route,
         name: "Stay listings (map)",
       },
       { id: ncNanoId(), href: "/listing-stay-detail", name: "Stay detail" },
@@ -310,12 +215,12 @@ export const NAVIGATION_DEMO_2: NavItemType[] = [
       //
       {
         id: ncNanoId(),
-        href: "/listing-experiences",
+        href: "/listing-experiences" as Route,
         name: "Experiences listings",
       },
       {
         id: ncNanoId(),
-        href: "/listing-experiences-map",
+        href: "/listing-experiences-map" as Route,
         name: "Experiences (map)",
       },
       {
@@ -327,28 +232,28 @@ export const NAVIGATION_DEMO_2: NavItemType[] = [
   },
   {
     id: ncNanoId(),
-    href: "/listing-car",
+    href: "/listing-car"as Route,
     name: "Listing pages",
     children: [
-      { id: ncNanoId(), href: "/listing-car", name: "Cars listings" },
-      { id: ncNanoId(), href: "/listing-car-map", name: "Cars listings (map)" },
-      { id: ncNanoId(), href: "/listing-car-detail", name: "Car detail" },
+      { id: ncNanoId(), href: "/listing-car" as Route, name: "Cars listings" },
+      { id: ncNanoId(), href: "/listing-car-map" as Route, name: "Cars listings (map)" },
+      { id: ncNanoId(), href: "/listing-car-detail"as Route, name: "Car detail" },
 
       //
       {
         id: ncNanoId(),
-        href: "/listing-real-estate",
+        href: "/listing-real-estate"as Route,
         name: "Real estate listings",
       },
       {
         id: ncNanoId(),
-        href: "/listing-real-estate-map",
+        href: "/listing-real-estate-map"as Route,
         name: "Real estate (map)",
       },
       //
       {
         id: ncNanoId(),
-        href: "/listing-flights",
+        href: "/listing-flights"as Route,
         name: "Flights listings",
       },
     ],
