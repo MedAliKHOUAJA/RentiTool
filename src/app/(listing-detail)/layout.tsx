@@ -21,7 +21,7 @@ const DetailtLayout = ({ children }: { children: ReactNode }) => {
   const handleCloseModalImageGallery = () => {
     let params = new URLSearchParams(document.location.search);
     params.delete("modal");
-    router.push(`${thisPathname}/?${params.toString()}` as Route);
+    router.push(`${thisPathname}/?${params.toString()}`);
   };
 
   const getImageGalleryListing = () => {

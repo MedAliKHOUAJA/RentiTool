@@ -88,8 +88,9 @@ export async function GET(request: Request) {
     const col = {
       id:
         pkCol ||
-        has(["ToolId", "ToolID", "Id", "ID", "id", "toolid", "tool_id"]),
+        has(["Toolid", "ToolId", "ToolID", "Id", "ID", "id", "toolid", "tool_id"]),
       owner: has([
+        "Ownerid",
         "OwnerId",
         "ownerid",
         "owner_id",
@@ -301,7 +302,7 @@ export async function GET(request: Request) {
           id: r.toolId,
           author,
           date: new Date().toISOString().slice(0, 10),
-          href: `/listing-tool-detail?id=${r.toolId}` as Route,
+          href: `/listing-tool-detail?id=${r.toolId}`,
           title,
           featuredImage,
           desc: r.description ?? undefined,
@@ -410,7 +411,7 @@ export async function POST(request: Request) {
       rentalPricePerWeek: has(['RentalPricePerWeek','rentalpriceperweek','rental_price_per_week']),
       categoryId: has(['CategoryId','categoryid','category_id']),
       subCategoryId: has(['SubCategoryId','subcategoryid','sub_category_id']),
-  ownerId: has(['OwnerId','ownerid','owner_id','UserId','userid','user_id']),
+  ownerId: has(['Ownerid','OwnerId','ownerid','owner_id','UserId','userid','user_id']),
       isActive: has(['IsActive','isactive','is_active','Active','active']),
       statusId: has(['StatusId','statusid','status_id']),
     };
@@ -488,6 +489,7 @@ export async function POST(request: Request) {
     return NextResponse.json(ui, { status: 201 });
   } catch (err: any) {
     console.error('/api/tools POST error:', err?.message || err);
-    return new NextResponse('Failed to create tool', { status: 500 });
+    console.error('Full error:', err);
+    return new NextResponse(`Failed to create tool: ${err?.message || err}`, { status: 500 });
   }
 }

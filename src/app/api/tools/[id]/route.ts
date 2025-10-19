@@ -231,7 +231,7 @@ export async function GET(
       ownerId: r.ownerId ?? null,
       author,
       date: new Date().toISOString().slice(0, 10),
-      href: `/listing-tool-detail?id=${r.toolId}` as Route,
+      href: `/listing-tool-detail?id=${r.toolId}`,
       title,
       featuredImage,
       desc: r.description ?? undefined,

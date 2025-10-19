@@ -47,9 +47,9 @@ const OwnerToolDetailPageContent = () => {
       <div className="container mt-10">
         <nav className="text-sm text-neutral-500 dark:text-neutral-400 mb-4" aria-label="Breadcrumb">
           <ol className="flex items-center gap-2">
-            <li><Link href={"/" as Route} className="hover:underline">Home</Link></li>
+            <li><Link href={"/"} className="hover:underline">Home</Link></li>
             <li className="opacity-60">/</li>
-            <li><Link href={"/tools" as Route} className="hover:underline">Tools</Link></li>
+            <li><Link href={"/tools"} className="hover:underline">Tools</Link></li>
             <li className="opacity-60">/</li>
             <li className="text-neutral-800 dark:text-neutral-200 truncate max-w-[60vw]">{title}</li>
           </ol>

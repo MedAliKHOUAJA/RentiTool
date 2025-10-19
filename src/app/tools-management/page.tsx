@@ -6,7 +6,8 @@ import BgGlassmorphism from '@/components/BgGlassmorphism';
 import BackgroundSection from '@/components/BackgroundSection';
 import ToolCard from '@/components/Cards/ToolCard';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { ToolDataType } from '@/data/types';
+import { ToolDataType, RentalDataType } from '@/data/types';
+import Link from 'next/link';
 
 const ToolsManagementPage = () => {
   const router = useRouter();
@@ -17,7 +18,7 @@ const ToolsManagementPage = () => {
   const [rentalPricePerDay, setRentalPricePerDay] = useState<string>('');
   const [categoryId, setCategoryId] = useState<string>('');
   const [subCategoryId, setSubCategoryId] = useState<string>('');
-  const STATIC_OWNER_ID = '2612236b-9fc8-4b07-a668-c197c312265f';
+  const STATIC_OWNER_ID = '420430c2-0338-4612-aa74-65f0a82900fe';
   const [ownerId, setOwnerId] = useState<string>(STATIC_OWNER_ID);
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -30,6 +31,13 @@ const ToolsManagementPage = () => {
   const [myTools, setMyTools] = useState<ToolDataType[]>([]);
   const [myToolsLoading, setMyToolsLoading] = useState(false);
   const [myToolsError, setMyToolsError] = useState<string | null>(null);
+  
+  // Rental management state
+  const [rentals, setRentals] = useState<RentalDataType[]>([]);
+  const [allRentals, setAllRentals] = useState<RentalDataType[]>([]); // Store all rentals for counting
+  const [rentalsLoading, setRentalsLoading] = useState(false);
+  const [rentalsError, setRentalsError] = useState<string | null>(null);
+  const [rentalFilter, setRentalFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
   const refreshMine = async () => {
     setMyToolsLoading(true);
     setMyToolsError(null);
@@ -42,6 +50,102 @@ const ToolsManagementPage = () => {
       setMyToolsError(e?.message || 'Failed to load your tools');
     } finally {
       setMyToolsLoading(false);
+    }
+  };
+
+  const fetchRentals = async () => {
+    try {
+      setRentalsLoading(true);
+      setRentalsError(null);
+      
+      // Try to fetch from database API first
+      try {
+        const response = await fetch('/api/rental-bookings');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Database API response:', data);
+          
+          if (Array.isArray(data)) {
+            // Show all rentals, not just current owner's
+            const ownerRentals = data; // Remove owner filter to show all rentals
+            
+            // Apply status filter
+            let filteredRentals = ownerRentals;
+            if (rentalFilter !== 'all') {
+              const statusMap = {
+                'pending': 1,      // Requested/Pending
+                'confirmed': 2,    // Accepted/Confirmed  
+                'completed': 5,    // Completed
+                'cancelled': 6     // Cancelled
+              };
+              filteredRentals = ownerRentals.filter((rental: RentalDataType) => rental.statusId === statusMap[rentalFilter]);
+            }
+            
+            console.log('All rentals found:', ownerRentals.length);
+            console.log('Filtered rentals:', filteredRentals.length);
+            console.log('Current filter:', rentalFilter);
+            
+            console.log('Filtered rentals from database:', filteredRentals.length);
+            setAllRentals(ownerRentals); // Store all rentals
+            setRentals(filteredRentals);
+            return;
+          }
+        }
+      } catch (apiError) {
+        console.log('Database API not available, using localStorage fallback');
+      }
+      
+      // Fallback to localStorage or mock data
+      const savedRentals = localStorage.getItem('rentals-management');
+      let mockRentals: RentalDataType[] = [
+        {
+          rentalId: 1,
+          toolId: 14,
+          ownerId: '420430c2-0338-4612-aa74-65f0a82900fe',
+          renterId: '550e8400-e29b-41d4-a716-446655440000',
+          totalPrice: 55,
+          rentalDateStart: '2024-12-15',
+          rentalDateEnd: '2024-12-16',
+          statusId: 1,
+          createdAt: '2024-12-01T10:00:00Z',
+          updatedAt: '2024-12-01T10:00:00Z'
+        },
+        {
+          rentalId: 2,
+          toolId: 15,
+          ownerId: '420430c2-0338-4612-aa74-65f0a82900fe',
+          renterId: '550e8400-e29b-41d4-a716-446655440001',
+          totalPrice: 120,
+          rentalDateStart: '2024-12-20',
+          rentalDateEnd: '2024-12-22',
+          statusId: 2,
+          createdAt: '2024-12-02T10:00:00Z',
+          updatedAt: '2024-12-02T10:00:00Z'
+        }
+      ];
+      
+      if (savedRentals) {
+        mockRentals = JSON.parse(savedRentals);
+      }
+      
+      // Filter by status if not 'all'
+      let filteredRentals = mockRentals;
+      if (rentalFilter !== 'all') {
+        const statusMap = {
+          'pending': 1,
+          'confirmed': 2, 
+          'completed': 5,
+          'cancelled': 6
+        };
+        filteredRentals = mockRentals.filter((rental: RentalDataType) => rental.statusId === statusMap[rentalFilter]);
+      }
+      
+      setAllRentals(mockRentals); // Store all mock rentals
+      setRentals(filteredRentals);
+    } catch (err: any) {
+      setRentalsError(err?.message || 'Failed to load rentals');
+    } finally {
+      setRentalsLoading(false);
     }
   };
 
@@ -92,6 +196,150 @@ const ToolsManagementPage = () => {
     if (activeTab !== 'mine') return;
     refreshMine();
   }, [activeTab, ownerId]);
+
+  // Load rentals when tab is 'reserved'
+  useEffect(() => {
+    if (activeTab !== 'reserved') return;
+    fetchRentals();
+  }, [activeTab, rentalFilter]);
+
+  // Rental management utility functions
+  const getStatusColor = (statusId: number) => {
+    switch (statusId) {
+      case 1: return 'bg-yellow-100 text-yellow-800'; // Requested
+      case 2: return 'bg-green-100 text-green-800'; // Accepted
+      case 3: return 'bg-red-100 text-red-800'; // Rejected
+      case 4: return 'bg-blue-100 text-blue-800'; // In Progress
+      case 5: return 'bg-purple-100 text-purple-800'; // Completed
+      case 6: return 'bg-gray-100 text-gray-800'; // Cancelled
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (statusId: number) => {
+    switch (statusId) {
+      case 1: return 'Requested';
+      case 2: return 'Accepted';
+      case 3: return 'Rejected';
+      case 4: return 'In Progress';
+      case 5: return 'Completed';
+      case 6: return 'Cancelled';
+      default: return 'Unknown';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('fr-FR', { 
+      style: 'currency', 
+      currency: 'TND',
+      minimumFractionDigits: 0 
+    }).format(price);
+  };
+
+  const acceptRental = async (rentalId: number) => {
+    try {
+      const response = await fetch('/api/rental-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rentalId, action: 'accept' })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Rental accepted:', result);
+        
+        // Update local state
+        setRentals(prevRentals => 
+          prevRentals.map(rental => 
+            rental.rentalId === rentalId 
+              ? { ...rental, statusId: 2 } // Accepted
+              : rental
+          )
+        );
+        
+        alert(`✅ Réservation #${rentalId} acceptée avec succès`);
+      } else {
+        const errorData = await response.json();
+        alert('❌ Erreur: ' + (errorData.error || 'Failed to accept rental'));
+      }
+    } catch (err: any) {
+      console.error('Accept error:', err);
+      alert('❌ Erreur: ' + err.message);
+    }
+  };
+
+  const rejectRental = async (rentalId: number) => {
+    try {
+      const response = await fetch('/api/rental-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rentalId, action: 'reject' })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Rental rejected:', result);
+        
+        // Update local state
+        setRentals(prevRentals => 
+          prevRentals.map(rental => 
+            rental.rentalId === rentalId 
+              ? { ...rental, statusId: 3 } // Rejected
+              : rental
+          )
+        );
+        
+        alert(`✅ Réservation #${rentalId} rejetée avec succès`);
+      } else {
+        const errorData = await response.json();
+        alert('❌ Erreur: ' + (errorData.error || 'Failed to reject rental'));
+      }
+    } catch (err: any) {
+      console.error('Reject error:', err);
+      alert('❌ Erreur: ' + err.message);
+    }
+  };
+
+  const updateRentalStatus = async (rentalId: number, newStatusId: number) => {
+    try {
+      const response = await fetch('/api/rental-bookings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rentalId, statusId: newStatusId })
+      });
+      
+      if (response.ok) {
+        setRentals(prevRentals => 
+          prevRentals.map(rental => 
+            rental.rentalId === rentalId 
+              ? { ...rental, statusId: newStatusId }
+              : rental
+          )
+        );
+        
+        const statusNames = {
+          4: 'En Cours',
+          5: 'Terminée'
+        };
+        
+        alert(`✅ Réservation #${rentalId} mise à jour vers: ${statusNames[newStatusId as keyof typeof statusNames]}`);
+      } else {
+        const errorData = await response.json();
+        alert('❌ Erreur: ' + (errorData.error || 'Failed to update status'));
+      }
+    } catch (err: any) {
+      console.error('Update error:', err);
+      alert('❌ Erreur: ' + err.message);
+    }
+  };
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);

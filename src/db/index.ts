@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || "postgres://postgres:mohamed@localhost:5432/DBrentitool";
 if (!connectionString) {
   throw new Error("Missing environment variable: DATABASE_URL");
 }

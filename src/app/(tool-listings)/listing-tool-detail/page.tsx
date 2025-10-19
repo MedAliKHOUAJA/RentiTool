@@ -8,18 +8,23 @@ import StartRating from '@/components/StartRating';
 import CardAuthorBox from '@/components/CardAuthorBox';
 import NcInputNumber from '@/components/NcInputNumber';
 import ModalSelectDate from '@/components/ModalSelectDate';
-import { Route } from '@/routers/types';
+import DatePickerWithBlocking from '@/components/DatePickerWithBlocking';
+import BlockedDatesDisplay from '@/components/BlockedDatesDisplay';
+import PaymentMethodSelector from '@/components/PaymentMethodSelector';
 import Link from 'next/link';
 
 const ToolDetailPageContent = () => {
   const searchParams = useSearchParams();
-  const toolId = searchParams.get('id');
+  const toolId = searchParams?.get('id');
   const [tool, setTool] = useState<ToolDataType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
+  const [rentalDays, setRentalDays] = useState<number>(0);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<number>(1);
 
   useEffect(() => {
     if (!toolId) return;
@@ -38,28 +43,44 @@ const ToolDetailPageContent = () => {
     })();
   }, [toolId]);
 
+  const handlePriceChange = (totalPrice: number, days: number) => {
+    setCalculatedPrice(totalPrice);
+    setRentalDays(days);
+  };
+
   const handleBooking = async () => {
     if (!toolId || !selectedStartDate || !selectedEndDate || !quantity) {
       alert('Veuillez sélectionner les dates et la quantité.');
       return;
     }
+    if (!selectedPaymentMethod) {
+      alert('Veuillez sélectionner une méthode de paiement.');
+      return;
+    }
     try {
-      const response = await fetch('/api/bookings', {
+      const requestData = {
+        toolId: parseInt(toolId || '0'),
+        ownerId: tool?.ownerId || '2612236b-9fc8-4b07-a668-c197c312265f',
+        renterId: '2612236b-9fc8-4b07-a668-c197c312265f', // Static renter ID for now
+        totalPrice: calculatedPrice || parseFloat(String(tool?.price || 0).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0,
+        rentalDateStart: selectedStartDate.toISOString(),
+        rentalDateEnd: selectedEndDate.toISOString(),
+        paymentMethodId: selectedPaymentMethod,
+      };
+      
+      console.log('Sending rental request:', requestData);
+      
+      const response = await fetch('/api/rental-bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          toolId,
-          startDate: selectedStartDate.toISOString(),
-          endDate: selectedEndDate.toISOString(),
-          quantity,
-        }),
+        body: JSON.stringify(requestData),
       });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Échec de la réservation.');
+        throw new Error(errorData.error || 'Échec de la réservation.');
       }
       const result = await response.json();
-      alert(result.message);
+      alert('Réservation créée avec succès ! ID: ' + result.rentalId);
     } catch (err: any) {
       alert('Erreur de réservation: ' + err.message);
     }
@@ -82,9 +103,9 @@ const ToolDetailPageContent = () => {
       <div className="container mt-10">
         <nav className="text-sm text-neutral-500 dark:text-neutral-400 mb-4" aria-label="Breadcrumb">
           <ol className="flex items-center gap-2">
-            <li><Link href={"/" as Route} className="hover:underline">Home</Link></li>
+            <li><Link href={"/"} className="hover:underline">Home</Link></li>
             <li className="opacity-60">/</li>
-            <li><Link href={"/tools" as Route} className="hover:underline">Tools</Link></li>
+            <li><Link href={"/tools"} className="hover:underline">Tools</Link></li>
             <li className="opacity-60">/</li>
             <li className="text-neutral-800 dark:text-neutral-200 truncate max-w-[60vw]">{title}</li>
           </ol>
@@ -133,20 +154,60 @@ const ToolDetailPageContent = () => {
 
               {!isOwner && (
                 <>
+                  {/* Display blocked dates */}
                   <div className="mt-6">
-                    <ModalSelectDate
-                      renderChildren={({ openModal }) => (
-                        <button onClick={openModal} className="w-full flex justify-between items-center px-4 py-3 border border-neutral-200 dark:border-neutral-700 rounded-2xl hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                          <span>{selectedStartDate && selectedEndDate ? `${selectedStartDate.toLocaleDateString()} - ${selectedEndDate.toLocaleDateString()}` : 'Select dates'}</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        </button>
-                      )}
-                      onChangeDate={(start, end) => { setSelectedStartDate(start); setSelectedEndDate(end); }}
+                    <BlockedDatesDisplay 
+                      toolId={parseInt(toolId || '0')}
+                      className="mb-4"
+                    />
+                  </div>
+
+                  <div className="mt-6">
+                    <DatePickerWithBlocking
+                      toolId={parseInt(toolId || '0')}
+                      toolPrice={typeof tool?.price === 'number' ? tool.price : parseFloat(String(tool?.price || 0).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0}
+                      onDateChange={(start, end) => { 
+                        setSelectedStartDate(start); 
+                        setSelectedEndDate(end); 
+                      }}
+                      onPriceChange={handlePriceChange}
+                      className="border border-neutral-200 dark:border-neutral-700 rounded-2xl"
                     />
                     <div className="mt-4">
                       <NcInputNumber label="Quantity" defaultValue={1} max={5} onChange={setQuantity} />
                     </div>
                   </div>
+
+                  {/* Payment Method Selection */}
+                  <div className="mt-6">
+                    <PaymentMethodSelector
+                      onMethodChange={setSelectedPaymentMethod}
+                      selectedMethodId={selectedPaymentMethod}
+                      className="border border-neutral-200 dark:border-neutral-700 rounded-2xl"
+                    />
+                  </div>
+
+                  {/* Price Summary */}
+                  {calculatedPrice > 0 && (
+                    <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-green-800">Résumé de la réservation</div>
+                          <div className="text-xs text-green-600">
+                            {rentalDays} jour(s) × {tool?.price || 0} DT/jour
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-green-800">
+                            {calculatedPrice} DT
+                          </div>
+                          <div className="text-xs text-green-600">
+                            Prix total
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     onClick={handleBooking}
@@ -156,7 +217,7 @@ const ToolDetailPageContent = () => {
             border border-transparent dark:border-neutral-300
             transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-neutral-300 dark:focus:ring-neutral-600 active:translate-y-0"
                   >
-                    Add to cart
+                    Rent this tool
                   </button>
 
                   <div className="mt-5 flex items-center justify-between text-neutral-600 dark:text-neutral-300 text-sm">

@@ -29,7 +29,7 @@ const ListingExperiencesDetailPage: FC<
   const router = useRouter();
 
   const handleOpenModalImageGallery = () => {
-    router.push(`${thisPathname}/?modal=PHOTO_TOUR_SCROLLABLE` as Route);
+    router.push(`${thisPathname}/?modal=PHOTO_TOUR_SCROLLABLE`);
   };
 
   const renderSection1 = () => {
