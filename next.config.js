@@ -88,7 +88,7 @@ const withPWA = require("next-pwa")({
     },
     // Cache API calls with network first strategy
     {
-      urlPattern: /^\/api\/.*/,
+      urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
       handler: "NetworkFirst",
       options: {
         cacheName: "api-cache",
