@@ -4,6 +4,9 @@ const withPWA = require("next-pwa")({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  buildExcludes: [({ asset, compilation }) => {
+    return asset.name.startsWith('server/') || asset.name.startsWith('static/chunks/') || asset.name === 'app-build-manifest.json' || asset.name === 'build-manifest.json' || asset.name === 'react-loadable-manifest.json' || asset.name === 'react-ssr-manifest.json';
+  }],
   runtimeCaching: [
     // Cache pages - IMPORTANT for offline
     {
