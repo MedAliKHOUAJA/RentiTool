@@ -7,12 +7,21 @@ import "@/styles/index.scss";
 import "rc-slider/assets/index.css";
 import Footer from "@/components/Footer";
 import FooterNav from "@/components/FooterNav";
+import { Metadata } from "next";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 const poppins = Poppins({
   subsets: ["latin"],
   display: "swap",
   weight: ["300", "400", "500", "600", "700"],
 });
+
+export const metadata: Metadata = {
+  title: "RentiTool",
+  description: "La plateforme de location de matériel entre particuliers.",
+  manifest: "/manifest.json",
+  themeColor: "#ffffff",
+};
 
 export default function RootLayout({
   children,
@@ -23,16 +32,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={poppins.className}>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#ffffff" />
-      </head>
       <body className="bg-white text-base dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200">
         <ClientCommons />
         <SiteHeader />
         {children}
         <FooterNav />
         <Footer />
+        <OfflineBanner />
       </body>
     </html>
   );
