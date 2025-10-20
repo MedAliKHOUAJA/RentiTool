@@ -3,9 +3,6 @@ import { GetToolsUseCase } from "@/features/tools/application/get-tools.use-case
 import { PostgresToolRepository } from "@/features/tools/infrastructure/postgres-tool.repository";
 import { NextRequest, NextResponse } from "next/server";
 
-//forcer dynamique le rendu pour chaque requête
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
