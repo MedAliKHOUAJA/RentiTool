@@ -118,7 +118,7 @@ const ToolDetailPageContent = () => {
     toolReviews, 
     ownerReviews, 
     rentalPricePerDay, 
-    imageUrl 
+    images
   } = toolDetails;
 
   console.log('🟢 [DATA] === DONNÉES DESTRUCTURÉES ===');
@@ -280,7 +280,16 @@ const ToolDetailPageContent = () => {
   return (
     <div className="nc-ListingDetailPage">
       <GallerySlider 
-        galleryImgs={imageUrl ? [imageUrl] : []}
+        galleryImgs={
+          images && images.length > 0
+            ? images.map(
+                (img) =>
+                  `data:image/jpeg;base64,${Buffer.from(
+                    (img.imageBinary as any).data
+                  ).toString("base64")}`
+              )
+            : []
+        }
         className="max-w-screen-xl mx-auto rounded-3xl"
       />
 

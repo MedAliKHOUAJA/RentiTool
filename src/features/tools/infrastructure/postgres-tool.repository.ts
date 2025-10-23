@@ -4,6 +4,7 @@ import { db } from "@/app/lib/postgres";
 import { User } from "@/features/users/domain/user";
 import { Review, getMainRating, mapDbSentimentToUI } from "@/features/reviews/types";
 import { ToolDetails } from "@/features/tools/domain/tool-details";
+import { Image } from "@/features/tools/domain/image";
 
 export class PostgresToolRepository implements ToolRepository {
   async findAll(limit?: number): Promise<Tool[]> {
@@ -27,9 +28,14 @@ export class PostgresToolRepository implements ToolRepository {
       u."Phone",
       u."RoleId",
       u."LocationId",
-      l."Governorate" || ', ' || l."Delegation" as "LocationName"
+      l."Governorate" || ', ' || l."Delegation" as "LocationName",
+      img."ImageId" as "imageId",
+      img."ImageBinary" as "imageBinary",
+      img."IsPrimaryToolImage" as "isPrimaryToolImage",
+      img."ClassificationId" as "classificationId"
     FROM "public"."Tools" t
     JOIN "public"."User" u ON t."Ownerid" = u."userId"
+    LEFT JOIN "public"."Images" img ON t."Toolid" = img."ToolId" AND img."IsPrimaryToolImage" = true AND img."ClassificationId" = 4
     LEFT JOIN "public"."Locations" l ON u."LocationId" = l."LocationId"
       ${limit ? `LIMIT ${limit}` : ''}
     `;
@@ -73,7 +79,6 @@ export class PostgresToolRepository implements ToolRepository {
 
     const tool = this.mapRowToTool(toolResult.rows[0]);
 
-    // ✅ CORRECTION : Ajout de RatedEntityTypeId et tous les champs sentiment
     const toolReviewsQuery = `
       SELECT
         r."RatingId",
@@ -103,7 +108,7 @@ export class PostgresToolRepository implements ToolRepository {
     `;
     const toolReviewsResult = await db.query(toolReviewsQuery, [id]);
 
-    // ✅ CORRECTION : Ajout de RatedEntityTypeId et tous les champs sentiment
+
     const ownerReviewsQuery = `
       SELECT
         r."RatingId",
@@ -142,6 +147,25 @@ export class PostgresToolRepository implements ToolRepository {
       ? ownerReviews.reduce((acc, review) => acc + getMainRating(review), 0) / ownerReviews.length 
       : 0;
 
+      const toolImagesQuery = `
+      SELECT 
+        "ImageId",
+        "ImageBinary",
+        "UserId",
+        "BusinessCardId",
+        "ToolId",
+        "RatingId",
+        "IsPrimaryToolImage",
+        "ClassificationId"
+      FROM public."Images"
+      WHERE "ToolId" = $1 AND "ClassificationId" = 4
+    `;
+    const toolImagesResult = await db.query(toolImagesQuery, [id]);
+
+    const primaryImage = toolImagesResult.rows.find(img => img.IsPrimaryToolImage);
+
+    const otherImages = toolImagesResult.rows.filter(img => !img.IsPrimaryToolImage);
+
     const toolDetails: ToolDetails = {
       ...tool,
       toolReviews: toolReviewsResult.rows.map((row) => this.mapRowToReview(row)),
@@ -149,7 +173,18 @@ export class PostgresToolRepository implements ToolRepository {
       owner: {
         ...tool.owner,
         starRating: ownerStarRating,
-      }
+      },
+      images: otherImages.map(img => ({
+        imageId: img.ImageId,
+        imageBinary: img.ImageBinary,
+        userId: img.UserId,
+        businessCardId: img.BusinessCardId,
+        toolId: img.ToolId,
+        ratingId: img.RatingId,
+        isPrimaryToolImage: img.IsPrimaryToolImage,
+        classificationId: img.ClassificationId,
+      })),
+     imagePrimary: primaryImage
     };
 
     return toolDetails;
@@ -158,14 +193,25 @@ export class PostgresToolRepository implements ToolRepository {
   private mapRowToTool(row: any): Tool {
     const owner: User = {
       userId: row.userId,
-      firstName: row.firstName,
-      lastName: row.lastName,
+      firstName: row.FirstName,
+      lastName: row.LastName,
       email: row.Email,
       phone: row.Phone,
       roleId: row.RoleId,
       locationId: row.LocationId,
       locationName: row.LocationName,
     };
+
+    const image: Image | undefined = row.imageId ? {
+      imageId: row.imageId,
+      imageBinary: row.imageBinary,
+      isPrimaryToolImage: row.isPrimaryToolImage,
+      classificationId: row.classificationId,
+      userId: undefined,
+      businessCardId: undefined,
+      toolId: row.Toolid,
+      ratingId: undefined
+    } : undefined;
 
     return {
       toolId: row.Toolid,
@@ -180,7 +226,7 @@ export class PostgresToolRepository implements ToolRepository {
       rentalPricePerWeek: row.RentalPricePerWeek,
       isActive: row.IsActive,
       statusId: row.StatusId,
-      imageUrl: row.Image_Url,
+      image,
       href: `/listing-tool-detail?id=${row.Toolid}`,
     };
   }
@@ -192,7 +238,7 @@ export class PostgresToolRepository implements ToolRepository {
       raterId: row.RaterId,
       ratedUserId: row.RatedUserId || undefined,
       ratedToolId: row.RatedToolId || undefined,
-      ratedEntityTypeId: row.RatedEntityTypeId, // ✅ Maintenant disponible
+      ratedEntityTypeId: row.RatedEntityTypeId, 
       reviewer: {
         id: row.rater_userId || row.userId,
         name: row.rater_firstName && row.rater_lastName

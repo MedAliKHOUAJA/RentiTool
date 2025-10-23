@@ -4,7 +4,7 @@ import StartRating from "@/components/StartRating";
 import BtnLikeIcon from "@/components/BtnLikeIcon";
 import SaleOffBadge from "@/components/SaleOffBadge";
 import Badge from "@/shared/Badge";
-import Image from "next/image";
+import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
 
 export interface ToolCardProps {
@@ -20,6 +20,7 @@ const ToolCard: FC<ToolCardProps> = ({
 }) => {
   const {
     featuredImage,
+    featuredImageBinary,
     title,
     href,
     like,
@@ -31,12 +32,19 @@ const ToolCard: FC<ToolCardProps> = ({
   } = data;
 
   const renderSliderGallery = () => {
+    let imgSrc: string | StaticImageData = featuredImage;
+    if (featuredImageBinary) {
+      imgSrc = `data:image/jpeg;base64,${Buffer.from(
+        (featuredImageBinary as any).data
+      ).toString("base64")}`;
+    }
+
     return (
       <div className="relative w-full rounded-2xl overflow-hidden">
         <div className="aspect-w-16 aspect-h-9 ">
           <Image
             fill
-            src={featuredImage}
+            src={imgSrc}
             alt={title}
             sizes="(max-width: 640px) 100vw, 350px"
           />
@@ -66,9 +74,7 @@ const ToolCard: FC<ToolCardProps> = ({
         </div>
         <div className="w-14  border-b border-neutral-100 dark:border-neutral-800"></div>
         <div className="flex justify-between items-center">
-          <span className="text-base font-semibold">
-            {price}
-          </span>
+          <span className="text-base font-semibold">{price}</span>
           <StartRating reviewCount={reviewCount} point={reviewStart} />
         </div>
       </div>

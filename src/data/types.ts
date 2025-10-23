@@ -151,6 +151,7 @@ export interface ToolDataType {
   href: Route<string>;
   title: string;
   featuredImage: StaticImageData | string;
+  featuredImageBinary?: Buffer;
   commentCount: number;
   viewCount: number;
   address: string;
