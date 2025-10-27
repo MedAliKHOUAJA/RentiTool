@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -252,7 +252,6 @@ const ToolDetailPageContent = () => {
       alert("Veuillez sélectionner les dates et la quantité.");
       return;
     }
-
     try {
       const response = await fetch('/api/bookings', {
         method: 'POST',
@@ -264,12 +263,10 @@ const ToolDetailPageContent = () => {
           quantity,
         }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Échec de la réservation.");
       }
-
       const result = await response.json();
       alert(result.message);
     } catch (err: any) {

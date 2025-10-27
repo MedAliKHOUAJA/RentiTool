@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { ToolDataType } from "@/data/types";
+import { ToolDataType } from "@/features/tools/presentation/tool.dto";
 import StartRating from "@/components/StartRating";
 import BtnLikeIcon from "@/components/BtnLikeIcon";
 import SaleOffBadge from "@/components/SaleOffBadge";
@@ -11,11 +11,11 @@ export interface ToolCardProps {
   className?: string;
   data: ToolDataType;
   size?: "default" | "small";
-  onDelete?: (() => void) | undefined; // when provided, show a delete icon
-  showLike?: boolean; // show like/fav heart
-  onEdit?: (() => void) | undefined; // when provided, show an edit icon
-  onToggleActive?: (() => void) | undefined; // when provided, show a toggle (enable/disable) icon
-  showStatusBadge?: boolean; // when true, show Available/Disabled badge for owner view
+  onDelete?: (() => void) | undefined;
+  showLike?: boolean; 
+  onEdit?: (() => void) | undefined; 
+  onToggleActive?: (() => void) | undefined; 
+  showStatusBadge?: boolean; 
 }
 
 const ToolCard: FC<ToolCardProps> = ({

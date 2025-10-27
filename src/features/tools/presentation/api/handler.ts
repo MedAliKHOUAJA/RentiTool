@@ -2,7 +2,9 @@ import { GetToolsUseCase } from "@/features/tools/application/get-tools.use-case
 import { PostgresToolRepository } from "@/features/tools/infrastructure/postgres-tool.repository";
 import { NextRequest, NextResponse } from "next/server";
 import { Tool } from "@/features/tools/domain/tool";
-import { ToolDataType, AuthorType } from "@/data/types";
+import { ToolDataType } from "@/features/tools/presentation/tool.dto";
+import { AuthorType } from "@/data/types";
+import { CreateToolUseCase } from "@/features/tools/application/create-tool.use-case";
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,5 +58,50 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to fetch tools' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      title,
+      description,
+      categoryId,
+      subCategoryId,
+      brand,
+      model,
+      rentalPricePerDay,
+      rentalPricePerWeek,
+      isActive,
+      statusId,
+      ownerId,
+    } = body;
+
+    if (!title || !ownerId) {
+      return NextResponse.json({ error: "Title and ownerId are required" }, { status: 400 });
+    }
+
+    const toolRepository = new PostgresToolRepository();
+    const createToolUseCase = new CreateToolUseCase(toolRepository);
+
+    const newTool = await createToolUseCase.execute({
+      title,
+      description,
+      categoryId,
+      subCategoryId,
+      brand,
+      model,
+      rentalPricePerDay,
+      rentalPricePerWeek,
+      isActive,
+      statusId,
+      ownerId,
+    });
+
+    return NextResponse.json(newTool, { status: 201 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to create tool' }, { status: 500 });
   }
 }

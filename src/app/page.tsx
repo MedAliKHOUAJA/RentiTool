@@ -1,11 +1,11 @@
 import React from "react";
-import ToolCard from "@/components/Cards/ToolCard";
+import ToolCard from "@/features/tools/presentation/components/ToolCard";
 import BgGlassmorphism from "@/components/BgGlassmorphism";
 import SectionGridCategoryBox from "@/components/SectionGridCategoryBox";
 import { DEMO_TOOL_CATEGORIES } from "@/data/taxonomies";
 import SectionHowItWork from "@/components/SectionHowItWork";
 import SectionOurFeatures from "@/components/SectionOurFeatures";
-import { ToolDataType } from "@/data/types";
+import { ToolDataType } from "@/features/tools/presentation/tool.dto";
 
 export const dynamic = 'force-dynamic';
 

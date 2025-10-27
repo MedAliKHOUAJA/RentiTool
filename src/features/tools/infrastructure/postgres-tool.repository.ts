@@ -4,7 +4,7 @@ import { db } from "@/app/lib/postgres";
 import { User } from "@/features/users/domain/user";
 import { Review, getMainRating, mapDbSentimentToUI } from "@/features/reviews/types";
 import { ToolDetails } from "@/features/tools/domain/tool-details";
-import { Image } from "@/features/tools/domain/image";
+import { ClassificationId, Image } from "@/features/tools/domain/image";
 
 export class PostgresToolRepository implements ToolRepository {
   async findAll(limit?: number): Promise<Tool[]> {
@@ -42,6 +42,133 @@ export class PostgresToolRepository implements ToolRepository {
     const result = await db.query(query);
 
     return result.rows.map((row) => this.mapRowToTool(row));
+  }
+
+  async findByOwnerId(ownerId: string): Promise<Tool[]> {
+    const query = `
+    SELECT
+      t."Toolid",
+      t."Title",
+      t."Description",
+      t."CategoryId",
+      t."SubCategoryId",
+      t."Brand",
+      t."Model",
+      t."RentalPricePerDay",
+      t."RentalPricePerWeek",
+      t."IsActive",
+      t."StatusId",
+      u."userId",
+      u."FirstName",
+      u."LastName",
+      u."Email",
+      u."Phone",
+      u."RoleId",
+      u."LocationId",
+      l."Governorate" || ', ' || l."Delegation" as "LocationName",
+      img."ImageId" as "imageId",
+      img."ImageBinary" as "imageBinary",
+      img."IsPrimaryToolImage" as "isPrimaryToolImage",
+      img."ClassificationId" as "classificationId"
+    FROM "public"."Tools" t
+    JOIN "public"."User" u ON t."Ownerid" = u."userId"
+    LEFT JOIN "public"."Images" img ON t."Toolid" = img."ToolId" AND img."IsPrimaryToolImage" = true AND img."ClassificationId" = 4
+    LEFT JOIN "public"."Locations" l ON u."LocationId" = l."LocationId"
+    WHERE t."Ownerid" = $1
+    `;
+    const result = await db.query(query, [ownerId]);
+
+    return result.rows.map((row) => this.mapRowToTool(row));
+  }
+
+  async create(
+    tool: Omit<Tool, 'toolId' | 'href' | 'owner'> & { 
+      ownerId: string;
+      images?: Buffer[];
+    }
+  ): Promise<Tool> {
+    const {
+      title,
+      description,
+      categoryId,
+      subCategoryId,
+      brand,
+      model,
+      rentalPricePerDay,
+      rentalPricePerWeek,
+      isActive,
+      statusId,
+      ownerId,
+      images = [], 
+    } = tool;
+  
+    // 1. Insérer l'outil
+    const insertToolQuery = `
+      INSERT INTO "public"."Tools" (
+        "Title", "Description", "CategoryId", "SubCategoryId", "Brand", "Model",
+        "RentalPricePerDay", "RentalPricePerWeek", "IsActive", "StatusId", "Ownerid"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING "Toolid"
+    `;
+    const toolValues = [
+      title, description, categoryId, subCategoryId, brand, model,
+      rentalPricePerDay, rentalPricePerWeek, isActive, statusId, ownerId
+    ];
+  
+    const toolResult = await db.query(insertToolQuery, toolValues);
+    const newToolId = toolResult.rows[0].Toolid;
+  
+    // 2. Insérer les images (si présentes)
+    if (images.length > 0) {
+      const insertImageQuery = `
+        INSERT INTO "public"."Image" (
+          "imageBinary", "toolId", "classificationId", "isPrimaryToolImage"
+        ) VALUES ($1, $2, $3, $4)
+      `;
+  
+      // Insérer chaque image
+      for (let i = 0; i < images.length; i++) {
+        const isPrimary = i === 0; // Première image = principale
+        const imageValues = [
+          images[i],               // Buffer
+          newToolId,               // toolId
+          ClassificationId.ToolImage, // = 4
+          isPrimary
+        ];
+        await db.query(insertImageQuery, imageValues);
+      }
+    }
+  
+    // 3. Récupérer l'outil complet avec owner et images (si nécessaire)
+    const selectQuery = `
+      SELECT
+        t."Toolid",
+        t."Title",
+        t."Description",
+        t."CategoryId",
+        t."SubCategoryId",
+        t."Brand",
+        t."Model",
+        t."RentalPricePerDay",
+        t."RentalPricePerWeek",
+        t."IsActive",
+        t."StatusId",
+        u."userId",
+        u."FirstName",
+        u."LastName",
+        u."Email",
+        u."Phone",
+        u."RoleId",
+        u."LocationId",
+        l."Governorate" || ', ' || l."Delegation" as "LocationName"
+      FROM "public"."Tools" t
+      JOIN "public"."User" u ON t."Ownerid" = u."userId"
+      LEFT JOIN "public"."Locations" l ON u."LocationId" = l."LocationId"
+      WHERE t."Toolid" = $1
+    `;
+    const newToolResult = await db.query(selectQuery, [newToolId]);
+  
+    return this.mapRowToTool(newToolResult.rows[0]);
   }
 
   async findById(id: string): Promise<ToolDetails | null> {
