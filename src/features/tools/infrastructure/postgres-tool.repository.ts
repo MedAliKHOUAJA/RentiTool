@@ -264,10 +264,11 @@ export class PostgresToolRepository implements ToolRepository {
       FROM "public"."Ratings" r
       JOIN "public"."User" rater_u ON r."RaterId" = rater_u."userId"
       JOIN "public"."User" rated_u ON r."RatedUserId" = rated_u."userId"
-      WHERE r."RatedUserId" = $1 AND r."RatedEntityTypeId" = 3
+      JOIN "public"."Rentals" rent ON r."RentalId" = rent."RentalId"
+      WHERE rent."ToolId" = $1 AND r."RatedUserId" = $2 AND r."RatedEntityTypeId" = 3
       ORDER BY r."CreatedAt" DESC
     `;
-    const ownerReviewsResult = await db.query(ownerReviewsQuery, [tool.owner.userId]);
+    const ownerReviewsResult = await db.query(ownerReviewsQuery, [id, tool.owner.userId]);
 
     const ownerReviews = ownerReviewsResult.rows.map((row) => this.mapRowToReview(row));
     const ownerStarRating = ownerReviews.length > 0 
