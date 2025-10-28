@@ -3,7 +3,7 @@
 import { Popover, Transition } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { Fragment } from "react";
-import { PathName } from "@/routers/types";
+import { PathName, Route } from "@/routers/types";
 import Link from "next/link";
 
 interface SolutionItem {
@@ -18,26 +18,26 @@ const solutions: SolutionItem[] = [
   {
     name: "Stays",
     description: "Stays rental description ",
-    href: "/listing-stay",
+    href: "/listing-stay" as Route,
     active: true,
     icon: IconOne,
   },
   {
     name: "Real Estate",
     description: "Real Estate description",
-    href: "/listing-real-estate",
+    href: "/listing-real-estate"  as Route,
     icon: IconTwo,
   },
   {
     name: "Cars",
     description: "Car rental description",
-    href: "/listing-car",
+    href: "/listing-car" as Route,
     icon: IconThree,
   },
   {
     name: "Experiences",
     description: "Tour and experiences",
-    href: "/listing-experiences",
+    href: "/listing-experiences" as Route,
     icon: IconFour,
   },
 ];

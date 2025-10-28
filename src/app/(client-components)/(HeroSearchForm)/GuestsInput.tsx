@@ -9,6 +9,7 @@ import ButtonSubmit from "./ButtonSubmit";
 import { PathName } from "@/routers/types";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
 import { GuestsObject } from "../type";
+import { Route } from "next";
 
 export interface GuestsInputProps {
   fieldClassName?: string;
@@ -88,7 +89,7 @@ const GuestsInput: FC<GuestsInputProps> = ({
             {/* BUTTON SUBMIT OF FORM */}
             {hasButtonSubmit && (
               <div className="pr-2 xl:pr-4">
-                <ButtonSubmit href={buttonSubmitHref} />
+                <ButtonSubmit href={buttonSubmitHref as Route} />
               </div>
             )}
           </div>

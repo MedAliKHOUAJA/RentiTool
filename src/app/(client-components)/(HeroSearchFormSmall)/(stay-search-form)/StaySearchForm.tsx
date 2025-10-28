@@ -3,6 +3,7 @@ import LocationInput from "../LocationInput";
 import GuestsInput from "../GuestsInput";
 import StayDatesRangeInput from "./StayDatesRangeInput";
 import { StaySearchFormFields } from "../../type";
+import { Route } from "next";
 
 export interface StaySearchFormProps {
   defaultFieldFocus?: StaySearchFormFields;
@@ -24,7 +25,7 @@ const StaySearchForm: FC<StaySearchFormProps> = ({ defaultFieldFocus }) => {
         <GuestsInput
           className="flex-1"
           autoFocus={defaultFieldFocus === "guests"}
-          submitLink="/listing-stay"
+          submitLink={"/listing-stay" as Route}
         />
       </form>
     );

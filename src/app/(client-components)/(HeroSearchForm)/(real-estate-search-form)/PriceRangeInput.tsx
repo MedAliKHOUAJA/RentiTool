@@ -6,6 +6,7 @@ import Slider from "rc-slider";
 import convertNumbThousand from "@/utils/convertNumbThousand";
 import ButtonSubmit from "../ButtonSubmit";
 import { CurrencyDollarIcon } from "@heroicons/react/24/outline";
+import { Route } from "next";
 
 export interface PriceRangeInputProps {
   onChange?: (data: any) => void;
@@ -48,7 +49,7 @@ const PriceRangeInput: FC<PriceRangeInputProps> = ({
 
             {/* BUTTON SUBMIT OF FORM */}
             <div className="pr-2 xl:pr-4">
-              <ButtonSubmit href="/listing-real-estate" />
+              <ButtonSubmit href={"/listing-real-estate" as Route} />
             </div>
           </div>
 

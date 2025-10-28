@@ -5,9 +5,10 @@ import { Review } from '../types';
 interface ReviewListProps {
   reviews: Review[];
   loading?: boolean;
+  reviewType: 'tool' | 'owner';
 }
 
-export function ReviewList({ reviews, loading }: ReviewListProps) {
+export function ReviewList({ reviews, loading, reviewType }: ReviewListProps) {
   if (loading) {
     return (
       <div className="space-y-4">
@@ -35,7 +36,7 @@ export function ReviewList({ reviews, loading }: ReviewListProps) {
   return (
     <div className="space-y-6">
       {reviews.map((review) => (
-        <ReviewCard key={review.id} review={review} />
+        <ReviewCard key={review.ratingId} review={review} reviewType={reviewType} />
       ))}
     </div>
   );

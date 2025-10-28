@@ -6,6 +6,7 @@ import Nav from "@/shared/Nav";
 import NavItem from "@/shared/NavItem";
 import ButtonSecondary from "@/shared/ButtonSecondary";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { Route } from "next";
 
 export interface HeaderFilterProps {
   tabActive: string;
@@ -52,7 +53,7 @@ const HeaderFilter: FC<HeaderFilterProps> = ({
           ))}
         </Nav>
         <span className="hidden sm:block flex-shrink-0">
-          <ButtonSecondary href="/listing-stay" className="!leading-none">
+          <ButtonSecondary href={"/listing-stay" as Route} className="!leading-none">
             <div className="flex items-center justify-center">
               <span>View all</span>
               <ArrowRightIcon className="w-5 h-5 ml-3" />

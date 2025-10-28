@@ -1,4 +1,5 @@
 import { PathName } from "@/routers/types";
+import { Route } from "next";
 import Link from "next/link";
 import React, { FC } from "react";
 
@@ -6,7 +7,7 @@ interface Props {
   href?: PathName;
 }
 
-const ButtonSubmit: FC<Props> = ({ href = "/listing-stay-map" }) => {
+const ButtonSubmit: FC<Props> = ({ href = "/listing-stay-map" as Route }) => {
   return (
     <Link
       href={href}

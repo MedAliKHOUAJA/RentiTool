@@ -41,7 +41,7 @@ const DEMO_TOOL_CATEGORIES: TaxonomyType[] = [
     name: "Bricolage",
     taxonomy: "category",
     listingType: "tool",
-    thumbnail: "/images/tools/bricolage.jpg"
+    thumbnail: "/images/placeholder-large.png",
   },
   {
     id: 11,
@@ -49,7 +49,7 @@ const DEMO_TOOL_CATEGORIES: TaxonomyType[] = [
     name: "Jardinage",
     taxonomy: "category",
     listingType: "tool",
-    thumbnail: "/images/tools/jardinage.jpg"
+    thumbnail: "/images/placeholder-large.png",
   },
   {
     id: 12,
@@ -57,8 +57,8 @@ const DEMO_TOOL_CATEGORIES: TaxonomyType[] = [
     name: "Construction",
     taxonomy: "category",
     listingType: "tool",
-    thumbnail: "/images/tools/construction.jpg"
-  }
+    thumbnail: "/images/placeholder-large.png",
+  },
 ];
 
 export {
@@ -66,6 +66,5 @@ export {
   DEMO_TAGS,
   DEMO_STAY_CATEGORIES,
   DEMO_EXPERIENCES_CATEGORIES,
-  DEMO_TOOL_CATEGORIES
+  DEMO_TOOL_CATEGORIES,
 };
-
