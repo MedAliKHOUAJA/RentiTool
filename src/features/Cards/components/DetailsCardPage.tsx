@@ -7,6 +7,8 @@ import { getCardById, saveSharedCard } from '@/features/Cards/actions/Cards';
 import { Card } from '@/features/Cards/types';
 import { Mail, Phone, Globe, MapPin, Linkedin, Facebook, Twitter, Instagram, Github, LucideIcon } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { NFCShareButton } from '@/features/Cards/components/NFCShareButton';
+import { NFCReceiveButton } from '@/features/Cards/components/NFCReceiveButton';
 
 const DetailsCardPage = () => {
   const router = useRouter();
@@ -156,6 +158,11 @@ const DetailsCardPage = () => {
                   <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
                   <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
                   
+                  {/* QR Code on Card */}
+                  <div className="absolute bottom-8 right-8 bg-white p-3 rounded-lg shadow-lg">
+                    <QRCodeSVG value={shareLink} size={80} />
+                  </div>
+
                   {/* Company Logo Area */}
                   <div className="absolute top-8 right-8">
                     {card.CompanyLogoUrl ? (
@@ -201,7 +208,7 @@ const DetailsCardPage = () => {
                     </div>
 
                     {/* Bottom Section - Company */}
-                    <div>
+                    <div className="mr-24">
                       <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-4 border border-white border-opacity-20">
                         <p className="text-white text-xl font-semibold">{card.CompanyName}</p>
                         {card.WebSite && (
@@ -316,40 +323,57 @@ const DetailsCardPage = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <button
-            onClick={() => router.push(`/account/cards/edit/${card.CardId}`)}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg flex items-center justify-center space-x-2"
-          >
-            <span>Modifier</span>
-          </button>
+        <div className="flex flex-col sm:flex-row justify-center gap-4 flex-wrap">
+          {/* NFC Share (only for own cards) */}
+          {!isShared && <NFCShareButton cardId={card.CardId} />}
+
+          {/* NFC Receive (only when shared) */}
+          {isShared && <NFCReceiveButton />}
+
+          {/* Edit Button (only for own cards) */}
+          {!isShared && (
+            <button
+              onClick={() => router.push(`/account/cards/edit/${card.CardId}`)}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg flex items-center justify-center space-x-2"
+            >
+              <span>Modifier</span>
+            </button>
+          )}
+
+          {/* Back Button */}
           <button
             onClick={() => router.push('/account/cards')}
             className="px-6 py-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-lg border border-gray-200 dark:border-gray-700"
           >
             Retour
           </button>
+
+          {/* Share Link Button (only for own cards) */}
           {!isShared && (
-            <>
-              <button
-                onClick={handleShare}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors shadow-lg"
-              >
-                {isCopied ? 'Lien Copié !' : 'Partager'}
-              </button>
-              <button
-                onClick={handleQR}
-                className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-colors shadow-lg"
-              >
-                QR Code
-              </button>
-            </>
+            <button
+              onClick={handleShare}
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors shadow-lg"
+            >
+              {isCopied ? 'Lien Copié !' : 'Partager'}
+            </button>
           )}
+
+          {/* QR Code Modal Button (only for own cards) */}
+          {!isShared && (
+            <button
+              onClick={handleQR}
+              className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-colors shadow-lg"
+            >
+              QR Code
+            </button>
+          )}
+
+          {/* Save Button (only when shared) */}
           {isShared && (
             <button
               onClick={handleSave}
               disabled={saved || saving}
-              className={`px-6 py-3 text-white rounded-lg transition-colors ${
+              className={`px-6 py-3 text-white rounded-lg transition-colors shadow-lg ${
                 saved ? 'bg-gray-400 cursor-not-allowed' : saving ? 'bg-green-400' : 'bg-green-500 hover:bg-green-600'
               }`}
             >
@@ -358,18 +382,20 @@ const DetailsCardPage = () => {
           )}
         </div>
 
-        {/* QR Code Display */}
+        {/* QR Code Modal */}
         {showQR && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h3 className="text-lg font-bold mb-4">Scannez le QR Code</h3>
-              <QRCodeSVG value={shareLink} size={256} className="mx-auto" />
-              <p className="text-center mt-4 text-sm text-gray-600">
-                Ce QR Code mène à : {shareLink}
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-md">
+              <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white text-center">Scannez le QR Code</h3>
+              <div className="bg-white p-4 rounded-lg">
+                <QRCodeSVG value={shareLink} size={256} className="mx-auto" />
+              </div>
+              <p className="text-center mt-6 text-sm text-gray-600 dark:text-gray-400 break-all">
+                {shareLink}
               </p>
               <button
                 onClick={closeQR}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="mt-6 w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Fermer
               </button>

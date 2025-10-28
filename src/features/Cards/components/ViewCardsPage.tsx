@@ -36,6 +36,9 @@ const ViewCardsPage = () => {
           return acc;
         }, [] as Card[]);
         
+        // Sort by CardId descending (newest first)
+        allCards.sort((a: { CardId: number; }, b: { CardId: number; }) => b.CardId - a.CardId);
+        
         setCards(allCards);
         console.log('✅ Total cards fetched:', allCards.length);
         console.log('✅ Own cards count:', ownCards?.length || 0);
