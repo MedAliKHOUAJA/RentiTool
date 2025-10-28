@@ -1,6 +1,5 @@
-import { DEMO_TOOL_LISTINGS } from "@/data/listings";
-import { NextResponse } from "next/server";
+import { GET, POST } from "@/features/tools/presentation/api/handler";
 
-export async function GET() {
-  return NextResponse.json(DEMO_TOOL_LISTINGS);
-}
+export const dynamic = 'force-dynamic';
+
+export { GET, POST };

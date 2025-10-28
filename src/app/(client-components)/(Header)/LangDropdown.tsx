@@ -6,44 +6,45 @@ import {
 } from "@heroicons/react/24/outline";
 import { FC, Fragment } from "react";
 import { headerCurrency } from "./CurrencyDropdown";
+import { Route } from "next";
 
 export const headerLanguage = [
   {
     id: "English",
     name: "English",
     description: "United State",
-    href: "##",
+    href: "##" as Route,
     active: true,
   },
   {
     id: "Vietnamese",
     name: "Vietnamese",
     description: "Vietnamese",
-    href: "##",
+    href: "##" as Route,
   },
   {
     id: "Francais",
     name: "Francais",
     description: "Belgique",
-    href: "##",
+    href: "##" as Route,
   },
   {
     id: "Francais",
     name: "Francais",
     description: "Canada",
-    href: "##",
+    href: "##" as Route,
   },
   {
     id: "Francais",
     name: "Francais",
     description: "Belgique",
-    href: "##",
+    href: "##" as Route,
   },
   {
     id: "Francais",
     name: "Francais",
     description: "Canada",
-    href: "##",
+    href: "##" as Route,
   },
 ];
 

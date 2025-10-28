@@ -7,7 +7,8 @@ import {
   DEMO_EXPERIENCES_CATEGORIES,
   DEMO_TOOL_CATEGORIES,
 } from "./taxonomies";
-import { CarDataType, ExperiencesDataType, StayDataType, ToolDataType } from "./types";
+import { CarDataType, ExperiencesDataType, StayDataType } from "./types";
+import { ToolDataType } from "@/features/tools/presentation/tool.dto";
 import { DEMO_AUTHORS } from "./authors";
 import car1 from "@/images/cars/1.png";
 import car2 from "@/images/cars/2.png";

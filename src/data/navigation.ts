@@ -201,13 +201,13 @@ export const NAVIGATION_DEMO_2: NavItemType[] = [
   //
   {
     id: ncNanoId(),
-    href: "/listing-stay",
+    href: "/listing-stay" as Route,
     name: "Listing pages",
     children: [
-      { id: ncNanoId(), href: "/listing-stay", name: "Stay listings" },
+      { id: ncNanoId(), href: "/listing-stay" as Route, name: "Stay listings" },
       {
         id: ncNanoId(),
-        href: "/listing-stay-map",
+        href: "/listing-stay-map" as Route,
         name: "Stay listings (map)",
       },
       { id: ncNanoId(), href: "/listing-stay-detail", name: "Stay detail" },
@@ -215,12 +215,12 @@ export const NAVIGATION_DEMO_2: NavItemType[] = [
       //
       {
         id: ncNanoId(),
-        href: "/listing-experiences",
+        href: "/listing-experiences" as Route,
         name: "Experiences listings",
       },
       {
         id: ncNanoId(),
-        href: "/listing-experiences-map",
+        href: "/listing-experiences-map" as Route,
         name: "Experiences (map)",
       },
       {
@@ -232,28 +232,28 @@ export const NAVIGATION_DEMO_2: NavItemType[] = [
   },
   {
     id: ncNanoId(),
-    href: "/listing-car",
+    href: "/listing-car"as Route,
     name: "Listing pages",
     children: [
-      { id: ncNanoId(), href: "/listing-car", name: "Cars listings" },
-      { id: ncNanoId(), href: "/listing-car-map", name: "Cars listings (map)" },
-      { id: ncNanoId(), href: "/listing-car-detail", name: "Car detail" },
+      { id: ncNanoId(), href: "/listing-car" as Route, name: "Cars listings" },
+      { id: ncNanoId(), href: "/listing-car-map" as Route, name: "Cars listings (map)" },
+      { id: ncNanoId(), href: "/listing-car-detail"as Route, name: "Car detail" },
 
       //
       {
         id: ncNanoId(),
-        href: "/listing-real-estate",
+        href: "/listing-real-estate"as Route,
         name: "Real estate listings",
       },
       {
         id: ncNanoId(),
-        href: "/listing-real-estate-map",
+        href: "/listing-real-estate-map"as Route,
         name: "Real estate (map)",
       },
       //
       {
         id: ncNanoId(),
-        href: "/listing-flights",
+        href: "/listing-flights"as Route,
         name: "Flights listings",
       },
     ],
