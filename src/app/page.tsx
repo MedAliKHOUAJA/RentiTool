@@ -22,6 +22,8 @@ async function getTools() {
   }
 }
 
+import FeaturedTools from "./(home)/FeaturedTools";
+
 async function PageHome() {
   const tools: ToolDataType[] = await getTools();
 
@@ -69,15 +71,7 @@ async function PageHome() {
                     <h2 className="text-3xl font-bold text-neutral-900 dark:text-neutral-50">Outils populaires</h2>
                     <a href="/tools" className="text-jaune-industriel font-semibold hover:underline">Voir tout</a>
                 </div>
-                <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {tools && tools.length > 0 ? (
-                        tools.map((tool) => (
-                            <ToolCard key={tool.id} data={tool} />
-                        ))
-                    ) : (
-                        <p>Aucun outil à afficher pour le moment.</p>
-                    )}
-                </div>
+                <FeaturedTools tools={tools} />
             </div>
         </div>
 
