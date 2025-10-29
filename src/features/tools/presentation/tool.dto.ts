@@ -21,7 +21,7 @@ export interface ToolDataType {
   price: string;
   listingCategory: TaxonomyType;
   saleOff?: string | null;
-  isAds: boolean | null;
+  isAds?: boolean | null;
   isActive?: boolean; 
   map: {
     lat: number;

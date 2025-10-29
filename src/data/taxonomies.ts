@@ -37,28 +37,28 @@ const DEMO_EXPERIENCES_CATEGORIES: TaxonomyType[] = __experiencesTaxonomies.map(
 const DEMO_TOOL_CATEGORIES: TaxonomyType[] = [
   {
     id: 10,
-    href: "/tools?category=bricolage",
+    href: "/tools?category=bricolage" as Route,
     name: "Bricolage",
     taxonomy: "category",
     listingType: "tool",
-    thumbnail: "/images/placeholder-large.png",
+    thumbnail: "/images/tools/bricolage.jpg"
   },
   {
     id: 11,
-    href: "/tools?category=jardinage",
+    href: "/tools?category=jardinage" as Route,
     name: "Jardinage",
     taxonomy: "category",
     listingType: "tool",
-    thumbnail: "/images/placeholder-large.png",
+    thumbnail: "/images/tools/jardinage.jpg"
   },
   {
     id: 12,
-    href: "/tools?category=construction",
+    href: "/tools?category=construction" as Route,
     name: "Construction",
     taxonomy: "category",
     listingType: "tool",
-    thumbnail: "/images/placeholder-large.png",
-  },
+    thumbnail: "/images/tools/construction.jpg"
+  }
 ];
 
 export {
@@ -66,5 +66,6 @@ export {
   DEMO_TAGS,
   DEMO_STAY_CATEGORIES,
   DEMO_EXPERIENCES_CATEGORIES,
-  DEMO_TOOL_CATEGORIES,
+  DEMO_TOOL_CATEGORIES
 };
+

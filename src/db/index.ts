@@ -32,3 +32,14 @@ if (process.env.NODE_ENV !== "production") {
 export const query = (text: string, params?: any[]) => pool.query(text, params);
 
 export default pool;
+
+export async function testConnection(): Promise<boolean> {
+  try {
+    await pool.query('SELECT 1');
+    console.log('✅ Connexion DB OK');
+    return true;
+  } catch (err) {
+    console.error('❌ Échec connexion DB:', err);
+    throw err;
+  }
+}

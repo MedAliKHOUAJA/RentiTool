@@ -22,11 +22,12 @@ export async function GET(request: NextRequest) {
         firstName: tool.owner.firstName,
         lastName: tool.owner.lastName,
         displayName: `${tool.owner.firstName} ${tool.owner.lastName}`,
-        avatar: "", // Placeholder
+        avatar: "", 
         href: `/author?id=${tool.owner.userId}`,
         count: 0,
         desc: "",
         jobName: "",
+        
       };
 
       return {

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, Fragment, useState } from "react";
+import React, { FC, Fragment, Suspense, useState } from "react";
+
 import { Dialog, Transition } from "@headlessui/react";
 import { ArrowRightIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import CommentListing from "@/components/CommentListing";
@@ -22,9 +23,9 @@ import GuestsInput from "./GuestsInput";
 import SectionDateRange from "../SectionDateRange";
 import { Route } from "next";
 
-export interface ListingStayDetailPageProps {}
+export interface ListingStayDetailPageContentProps {}
 
-const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({}) => {
+const ListingStayDetailPageContent: FC<ListingStayDetailPageContentProps> = ({}) => {
   //
 
   let [isOpenModalAmenities, setIsOpenModalAmenities] = useState(false);
@@ -191,7 +192,7 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({}) => {
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-40" />
+              <div className="fixed inset-0 bg-black bg-opacity-40" />
             </Transition.Child>
 
             {/* This element is to trick the browser into centering the modal contents. */}
@@ -631,6 +632,14 @@ const ListingStayDetailPage: FC<ListingStayDetailPageProps> = ({}) => {
         </div>
       </main>
     </div>
+  );
+};
+
+const ListingStayDetailPage = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ListingStayDetailPageContent />
+    </Suspense>
   );
 };
 

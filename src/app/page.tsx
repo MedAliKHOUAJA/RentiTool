@@ -1,88 +1,58 @@
-import React from "react";
-import ToolCard from "@/features/tools/presentation/components/ToolCard";
-import BgGlassmorphism from "@/components/BgGlassmorphism";
-import SectionGridCategoryBox from "@/components/SectionGridCategoryBox";
-import { DEMO_TOOL_CATEGORIES } from "@/data/taxonomies";
-import SectionHowItWork from "@/components/SectionHowItWork";
-import SectionOurFeatures from "@/components/SectionOurFeatures";
-import { ToolDataType } from "@/features/tools/presentation/tool.dto";
+"use client";
 
-export const dynamic = 'force-dynamic';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-async function getTools() {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tools?limit=8`, { cache: 'no-store' });
-    if (!res.ok) {
-      return [];
-    }
-    return res.json();
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-}
+function PageHome() {
+  const [showSplash, setShowSplash] = useState(true);
+  const router = useRouter();
 
-async function PageHome() {
-  const tools: ToolDataType[] = await getTools();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Rediriger vers la page de connexion après 7 secondes
+      router.push("/login");
+    }, 7000);
 
+    return () => clearTimeout(timer);
+  }, [router]);
+
+  // Splash Screen uniquement - c'est tout ce que voit l'utilisateur
   return (
-    <main className="nc-PageHome relative overflow-hidden">
-      <BgGlassmorphism />
-
-      <div className="container relative space-y-24 mb-24 lg:space-y-28 lg:mb-28">
-        {/* HERO SECTION */}
-        <div className="relative pt-10 lg:pt-20 pb-16">
-            <div className="flex flex-col items-center text-center">
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-neutral-900 dark:text-neutral-50">Louez les outils dont vous avez besoin</h1>
-                <p className="mt-4 text-lg text-neutral-6000 dark:text-neutral-300">La plateforme de location de matériel entre particuliers. Simple, rapide et local.</p>
-                <div className="mt-8 w-full max-w-2xl">
-                    {/* Search bar placeholder */}
-                    <div className="relative">
-                        <input type="text" placeholder="Rechercher un outil (ex: perceuse, tondeuse...)" className="w-full p-4 pr-12 rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-jaune-industriel" />
-                        <button className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-jaune-industriel text-bleu-nuit">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <div className="nc-PageHomeSplash min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700">
+      <div className="text-center text-white">
+        {/* Logo/Icon */}
+        <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
+          <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={1.5} 
+              stroke="currentColor" 
+              className="w-8 h-8 text-white"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.338 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
+            </svg>
+          </div>
         </div>
-
-        {/* BROWSE BY CATEGORY SECTION */}
-        <SectionGridCategoryBox 
-            categories={DEMO_TOOL_CATEGORIES}
-            heading="Parcourir par catégorie"
-            subHeading="Trouvez l'outil parfait pour chaque type de projet"
-        />
-
-        {/* HOW IT WORKS SECTION */}
-        <SectionHowItWork />
-
-        {/* WHY CHOOSE RENTITOOL SECTION */}
-        <SectionOurFeatures />
-
-        {/* FEATURED TOOLS SECTION */}
-        <div className="relative py-16">
-            <div className="container">
-                <div className="flex justify-between items-end mb-8">
-                    <h2 className="text-3xl font-bold text-neutral-900 dark:text-neutral-50">Outils populaires</h2>
-                    <a href="/tools" className="text-jaune-industriel font-semibold hover:underline">Voir tout</a>
-                </div>
-                <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {tools && tools.length > 0 ? (
-                        tools.map((tool) => (
-                            <ToolCard key={tool.id} data={tool} />
-                        ))
-                    ) : (
-                        <p>Aucun outil à afficher pour le moment.</p>
-                    )}
-                </div>
-            </div>
+        
+        <h1 className="text-5xl md:text-6xl font-bold mb-4">RentiTool</h1>
+        <p className="text-xl md:text-2xl opacity-90 mb-8">
+          Location d'outils entre particuliers
+        </p>
+        
+        <div className="flex justify-center space-x-2">
+          <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+          <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+        </div>
+        
+        <div className="mt-8 text-sm opacity-70">
+          Démarrage de l'application...
         </div>
 
       </div>
-    </main>
+    </div>
   );
 }
 
