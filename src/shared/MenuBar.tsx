@@ -40,7 +40,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <Dialog.Overlay className="fixed inset-0 bg-black/60 dark:bg-black/70" />
+            <div className="fixed inset-0 bg-black/60 dark:bg-black/70" />
           </Transition.Child>
           <div className="fixed inset-0">
             <div className="flex justify-end min-h-full ">

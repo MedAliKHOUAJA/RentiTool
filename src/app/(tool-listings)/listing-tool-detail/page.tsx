@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+
 import { ToolDetails } from '@/features/tools/domain/tool-details';
 import GallerySlider from '@/components/GallerySlider';
 import StartRating from '@/components/StartRating';
@@ -14,6 +14,7 @@ import { ReviewList } from '@/features/reviews/components/ReviewList';
 import { ReviewStats } from '@/features/reviews/components/ReviewStats';
 import { WriteReviewModal } from '@/features/reviews/components/WriteReviewModal';
 import { getMainRating } from '@/features/reviews/types';
+import { useSearchParams } from 'next/navigation';
 
 const ToolDetailPageContent = () => {
   console.log('🟢 [START] Composant listing-tool-detail chargé');
@@ -252,6 +253,7 @@ const ToolDetailPageContent = () => {
       alert("Veuillez sélectionner les dates et la quantité.");
       return;
     }
+
     try {
       const response = await fetch('/api/bookings', {
         method: 'POST',
@@ -263,10 +265,12 @@ const ToolDetailPageContent = () => {
           quantity,
         }),
       });
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Échec de la réservation.");
       }
+
       const result = await response.json();
       alert(result.message);
     } catch (err: any) {

@@ -9,10 +9,11 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useRef } from "react";
 import { PathName } from "@/routers/types";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+
 import isInViewport from "@/utils/isInViewport";
 import { Route } from "next/types";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 let WIN_PREV_POSITION = 0;
 if (typeof window !== "undefined") {
@@ -39,7 +40,7 @@ const NAV: NavItem[] = [
   },
   {
     name: "Home",
-    link: "/",
+    link: "/"  as PathName,
     icon: HomeIcon,
     isCentral: true,
   },
@@ -49,7 +50,7 @@ const NAV: NavItem[] = [
     icon: PlusCircleIcon,
   },
   {
-    name: "Compte",
+    name: "Mon Compte",
     link: "/account/profile",
     icon: UserCircleIcon,
   },
@@ -108,7 +109,7 @@ const FooterNav = () => {
       return (
         <Link
           key={index}
-          href={item.link || "/"}
+          href={item.link || "/"  as PathName}
           className={`flex items-center justify-center w-16 h-16 rounded-full bg-primary-600 text-white shadow-lg transform -translate-y-1/2`}
         >
           <item.icon className="w-8 h-8" />
@@ -119,7 +120,7 @@ const FooterNav = () => {
     return (
       <Link
         key={index}
-        href={item.link || "/"}
+        href={item.link || "/"  as PathName}
         className={`flex flex-col items-center justify-center text-neutral-500 dark:text-neutral-300/90 ${
           isActive ? "text-primary-600 dark:text-primary-400" : ""
         }`}
