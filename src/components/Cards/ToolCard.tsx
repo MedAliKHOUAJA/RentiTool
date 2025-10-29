@@ -1,11 +1,11 @@
 import React, { FC } from "react";
-import { ToolDataType } from "@/data/types";
 import StartRating from "@/components/StartRating";
 import BtnLikeIcon from "@/components/BtnLikeIcon";
 import SaleOffBadge from "@/components/SaleOffBadge";
 import Badge from "@/shared/Badge";
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
+import { ToolDataType } from "@/features/tools/presentation/tool.dto";
 
 export interface ToolCardProps {
   className?: string;
