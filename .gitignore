@@ -41,3 +41,7 @@ yarn-error.log*
 .cache/
 dist/
 *.gz
+package.json
+package-lock.json
+yarn.lock
+next.config.js
