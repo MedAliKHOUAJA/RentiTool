@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StarRating } from './StarRating';
 import { Review, getMainRating } from '../types';
 import Avatar from '@/shared/Avatar';
@@ -15,6 +15,7 @@ interface ReviewCardProps {
 }
 
 export function ReviewCard({ review, reviewType }: ReviewCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const mainRating = getMainRating(review);
 
   // Badge de sentiment
@@ -187,9 +188,21 @@ export function ReviewCard({ review, reviewType }: ReviewCardProps) {
       {/* Commentaire */}
       {review.comment && (
         <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/30 rounded-lg">
-          <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+          <p
+            className={`text-neutral-700 dark:text-neutral-300 leading-relaxed ${
+              !isExpanded && 'line-clamp-3'
+            }`}
+          >
             {review.comment}
           </p>
+          {review.comment.length > 150 && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-sm font-semibold text-primary-600 hover:text-primary-800 mt-2"
+            >
+              {isExpanded ? 'Voir moins' : 'Voir plus'}
+            </button>
+          )}
         </div>
       )}
 

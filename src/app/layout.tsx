@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import { Poppins } from "next/font/google";
 import SiteHeader from "./(client-components)/(Header)/SiteHeader";
 import ClientCommons from "./ClientCommons";
@@ -20,6 +21,9 @@ export const metadata: Metadata = {
   title: "RentiTool",
   description: "La plateforme de location de matériel entre particuliers.",
   manifest: "/manifest.json",
+};
+
+export const viewport = {
   themeColor: "#ffffff",
 };
 

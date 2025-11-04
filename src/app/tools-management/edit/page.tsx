@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import BgGlassmorphism from "@/components/BgGlassmorphism";
-import BackgroundSection from "@/components/BackgroundSection";
 import Alert from "@/components/Alert";
+import BackgroundSection from "@/components/BackgroundSection";
+import BgGlassmorphism from "@/components/BgGlassmorphism";
 import SimilarityCircle from "@/components/SimilarityCircle";
+import { useSearchParams, useRouter } from "next/navigation";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 
-const EditToolPage = () => {
+const EditToolPageContent = () => {
   const router = useRouter();
   const sp = useSearchParams();
   const id = sp.get("id");
@@ -620,6 +620,14 @@ const EditToolPage = () => {
         </div>
       )}
     </div>
+  );
+};
+
+const EditToolPage = () => {
+  return (
+    <Suspense fallback={<div className="container py-10">Loading...</div>}>
+      <EditToolPageContent />
+    </Suspense>
   );
 };
 

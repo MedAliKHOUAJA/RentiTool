@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { query } from "@/db";
 
+export const dynamic = 'force-dynamic';
+
 // Returns subcategory options filtered by a given categoryId.
 // It discovers the SubCategory FK on the Tools table dynamically and
 // figures out the SubCategory table + label column, then filters by its CategoryId column.

@@ -1,18 +1,17 @@
+'use client';
 import React from "react";
 import { FC } from "react";
 import ButtonPrimary from "@/shared/ButtonPrimary";
 import ButtonSecondary from "@/shared/ButtonSecondary";
 import { Route } from "@/routers/types";
 
-export interface CommonLayoutProps {
+const CommonLayout: FC<{
   children: React.ReactNode;
   params: {
-    stepIndex: string;
+    stepIndex: string[];
   };
-}
-
-const CommonLayout: FC<CommonLayoutProps> = ({ children, params }) => {
-  const index = Number(params.stepIndex) || 1;
+}> = ({ children, params }) => {
+  const index = Number(params.stepIndex?.[0]) || 1;
   const nextHref = (
     index < 10 ? `/add-listing/${index + 1}` : `/add-listing/${1}`
   ) as Route;

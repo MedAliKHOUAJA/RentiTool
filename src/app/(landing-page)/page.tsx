@@ -1,24 +1,23 @@
+// src/app/(landing)/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-function PageHome() {
+export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Rediriger vers la page de connexion après 7 secondes
       router.push("/login");
     }, 7000);
 
     return () => clearTimeout(timer);
   }, [router]);
 
-  // Splash Screen uniquement - c'est tout ce que voit l'utilisateur
   return (
-    <div className="nc-PageHomeSplash min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700">
       <div className="text-center text-white">
         {/* Logo/Icon */}
         <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
@@ -48,12 +47,9 @@ function PageHome() {
         </div>
         
         <div className="mt-8 text-sm opacity-70">
-          Démarrage de l'application...
+          Redirection vers la connexion...
         </div>
-
       </div>
     </div>
   );
 }
-
-export default PageHome;

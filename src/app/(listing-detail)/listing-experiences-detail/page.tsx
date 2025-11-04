@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useState } from "react";
+import React, { FC, Suspense, useState } from "react";
 import { ArrowRightIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import CommentListing from "@/components/CommentListing";
 import FiveStartIconForRate from "@/components/FiveStartIconForRate";
@@ -20,11 +20,9 @@ import GuestsInput from "./GuestsInput";
 import SectionDateRange from "../SectionDateRange";
 import { Route } from "next";
 
-export interface ListingExperiencesDetailPageProps {}
+export interface ListingExperiencesDetailPageContentProps {}
 
-const ListingExperiencesDetailPage: FC<
-  ListingExperiencesDetailPageProps
-> = ({}) => {
+const ListingExperiencesDetailPageContent: FC<ListingExperiencesDetailPageContentProps> = ({}) => {
   const thisPathname = usePathname();
   const router = useRouter();
 
@@ -499,6 +497,14 @@ const ListingExperiencesDetailPage: FC<
         </div>
       </main>
     </div>
+  );
+};
+
+const ListingExperiencesDetailPage = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ListingExperiencesDetailPageContent />
+    </Suspense>
   );
 };
 
