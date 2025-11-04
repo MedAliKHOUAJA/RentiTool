@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import FooterNav from "@/components/FooterNav";
 import { Metadata } from "next";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { Providers } from "./providers";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -37,12 +38,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={poppins.className}>
       <body className="bg-white text-base dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200">
-        <ClientCommons />
-        <SiteHeader />
-        {children}
-        <FooterNav />
-        <Footer />
-        <OfflineBanner />
+        <Providers>
+          <ClientCommons />
+          <SiteHeader />
+          {children}
+          <FooterNav />
+          <Footer />
+          <OfflineBanner />
+        </Providers>
       </body>
     </html>
   );

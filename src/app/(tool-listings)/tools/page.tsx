@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ToolCard from "@/features/tools/presentation/components/ToolCard";
-import { ToolDataType } from "@/features/tools/presentation/tool.dto";
-import HeaderFilter from "@/components/HeaderFilter";
+import { Tool } from "@/features/tools/domain/tool";
+import ToolCard from "@/components/Cards/ToolCard";
 
 const ToolsPage = () => {
-  const [tools, setTools] = useState<ToolDataType[]>([]);
+  const [tools, setTools] = useState<Tool[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -20,7 +19,7 @@ const ToolsPage = () => {
           throw new Error(msg || "Failed to fetch tools");
         }
         const data = await response.json();
-        setTools(data);
+        setTools(data.tools);
         setError(null);
       } catch (error) {
         console.error(error);
@@ -47,7 +46,7 @@ const ToolsPage = () => {
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8 mt-8 lg:mt-10">
         {tools.map((tool) => (
-          <ToolCard key={tool.id} data={tool} />
+          <ToolCard key={tool.toolId} data={tool} />
         ))}
       </div>
     </div>

@@ -1,24 +1,21 @@
 import React, { FC } from "react";
 import StartRating from "@/components/StartRating";
 import BtnLikeIcon from "@/components/BtnLikeIcon";
-import SaleOffBadge from "@/components/SaleOffBadge";
 import Badge from "@/shared/Badge";
-import Image, { StaticImageData } from "next/image";
-
-import { ToolDataType } from "@/features/tools/presentation/tool.dto";
+import Image from "next/image";
 import Link from "next/link";
-
-
+import { Tool } from "@/features/tools/domain/tool";
+import { getImageUrl } from "@/features/images/utils/image-utils";
 
 export interface ToolCardProps {
   className?: string;
-  data: ToolDataType;
+  data: Tool;
   size?: "default" | "small";
-  onDelete?: (() => void) | undefined; // when provided, show a delete icon
-  showLike?: boolean; // show like/fav heart
-  onEdit?: (() => void) | undefined; // when provided, show an edit icon
-  onToggleActive?: (() => void) | undefined; // when provided, show a toggle (enable/disable) icon
-  showStatusBadge?: boolean; // when true, show Available/Disabled badge for owner view
+  onDelete?: (() => void) | undefined;
+  showLike?: boolean;
+  onEdit?: (() => void) | undefined;
+  onToggleActive?: (() => void) | undefined;
+  showStatusBadge?: boolean;
 }
 
 const ToolCard: FC<ToolCardProps> = ({
@@ -31,63 +28,59 @@ const ToolCard: FC<ToolCardProps> = ({
   onToggleActive,
   showStatusBadge = false,
 }) => {
+  // ✅ Extraire les données du type Tool
   const {
-    featuredImage,
-    featuredImageBinary,
     title,
     href,
-    like,
-    saleOff,
-    isAds,
-    price,
-    reviewStart,
-    reviewCount,
+    image,
+    rentalPricePerDay,
+    isActive,
+    reviews,
   } = data;
+
+  // ✅ Convertir l'objet Image en URL
+  const imageUrl = getImageUrl(image);
+  
+  // ✅ Calculer les reviews (à adapter selon vos besoins)
+  const reviewCount = reviews?.length || 0;
+  const reviewStart = 0; // TODO: Calculer la moyenne des reviews
 
   const hasActions = Boolean(onEdit || onDelete || onToggleActive);
 
   const renderSliderGallery = () => {
-    let imgSrc: string | StaticImageData = featuredImage;
-    if (featuredImageBinary) {
-      imgSrc = `data:image/jpeg;base64,${Buffer.from(
-        (featuredImageBinary as any).data
-      ).toString("base64")}`;
-    }
-
     return (
       <div className="relative w-full rounded-2xl overflow-hidden">
-        <div className="aspect-w-16 aspect-h-9 ">
+        <div className="aspect-w-16 aspect-h-9">
           <Image
             fill
-            src={imgSrc}
+            src={imageUrl}
             alt={title}
             sizes="(max-width: 640px) 100vw, 350px"
+            className="object-cover"
           />
         </div>
         {showLike && !hasActions && (
           <BtnLikeIcon
-            isLiked={like}
+            isLiked={false}
             className="absolute right-3 top-3 z-[1]"
           />
         )}
-        {saleOff && <SaleOffBadge className="absolute left-3 top-3" />}
       </div>
     );
   };
 
   const renderContent = () => {
     return (
-      <div className={size === "default" ? "p-5  space-y-4" : "p-3  space-y-2"}>
+      <div className={size === "default" ? "p-5 space-y-4" : "p-3 space-y-2"}>
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
-            {isAds && <Badge name="ADS" color="green" />}
-            {showStatusBadge &&
-              typeof data.isActive === "boolean" &&
-              (data.isActive ? (
+            {showStatusBadge && typeof isActive === "boolean" && (
+              isActive ? (
                 <Badge name="Available" color="green" />
               ) : (
                 <Badge name="Disabled" color="red" />
-              ))}
+              )
+            )}
             <h2
               className={`capitalize ${
                 size === "default"
@@ -99,14 +92,14 @@ const ToolCard: FC<ToolCardProps> = ({
             </h2>
           </div>
         </div>
-        <div className="w-14  border-b border-neutral-100 dark:border-neutral-800"></div>
+        <div className="w-14 border-b border-neutral-100 dark:border-neutral-800"></div>
         <div className="flex justify-between items-center">
           <span className="text-base font-semibold">
-            {price} DT
+            {rentalPricePerDay} DT
             {` `}
             {size === "default" && (
               <span className="text-sm text-neutral-500 dark:text-neutral-400 font-normal">
-                /day
+                /jour
               </span>
             )}
           </span>
@@ -168,14 +161,13 @@ const ToolCard: FC<ToolCardProps> = ({
                   onToggleActive();
                 }}
                 className={`inline-flex items-center justify-center w-10 h-10 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  data.isActive
+                  isActive
                     ? "bg-neutral-500 hover:bg-neutral-400 focus:ring-neutral-400"
                     : "bg-green-600 hover:bg-green-500 focus:ring-green-500"
                 }`}
-                title={data.isActive ? "Disable tool" : "Enable tool"}
-                aria-label={data.isActive ? "Disable tool" : "Enable tool"}
+                title={isActive ? "Disable tool" : "Enable tool"}
+                aria-label={isActive ? "Disable tool" : "Enable tool"}
               >
-                {/* power icon; green when enabling, neutral when disabling */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
