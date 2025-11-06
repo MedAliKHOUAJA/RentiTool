@@ -13,7 +13,7 @@ export interface PageAboutProps {}
 const PageAbout: FC<PageAboutProps> = ({}) => {
   return (
     <div className={`nc-PageAbout overflow-hidden relative`}>
-      {/* ======== BG GLASS ======== */}
+
       <BgGlassmorphism />
 
       <div className="container py-16 lg:py-28 space-y-16 lg:space-y-28">

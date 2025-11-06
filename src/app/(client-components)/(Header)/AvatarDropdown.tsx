@@ -2,6 +2,9 @@ import { Popover, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import Avatar from "@/shared/Avatar";
 import SwitchDarkMode2 from "@/shared/SwitchDarkMode2";
+
+
+import { PathName } from "@/routers/types";
 import Link from "next/link";
 import { Route } from "next";
 interface Props {
@@ -79,7 +82,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 2 --------------------- */}
                     <Link
-                      href={"/author"}
+                      href={"/author" as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >
@@ -201,7 +204,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 2 --------------------- */}
                     <Link
-                      href={"/#"}
+                      href={"/#"  as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >
@@ -264,7 +267,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 2 --------------------- */}
                     <Link
-                      href={"/#"}
+                      href={"/#"  as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >

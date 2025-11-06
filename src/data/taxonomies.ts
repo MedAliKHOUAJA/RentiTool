@@ -37,7 +37,7 @@ const DEMO_EXPERIENCES_CATEGORIES: TaxonomyType[] = __experiencesTaxonomies.map(
 const DEMO_TOOL_CATEGORIES: TaxonomyType[] = [
   {
     id: 10,
-    href: "/tools?category=bricolage",
+    href: "/tools?category=bricolage" as Route,
     name: "Bricolage",
     taxonomy: "category",
     listingType: "tool",
@@ -45,7 +45,7 @@ const DEMO_TOOL_CATEGORIES: TaxonomyType[] = [
   },
   {
     id: 11,
-    href: "/tools?category=jardinage",
+    href: "/tools?category=jardinage" as Route,
     name: "Jardinage",
     taxonomy: "category",
     listingType: "tool",
@@ -53,7 +53,7 @@ const DEMO_TOOL_CATEGORIES: TaxonomyType[] = [
   },
   {
     id: 12,
-    href: "/tools?category=construction",
+    href: "/tools?category=construction" as Route,
     name: "Construction",
     taxonomy: "category",
     listingType: "tool",

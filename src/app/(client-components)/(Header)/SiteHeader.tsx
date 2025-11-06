@@ -1,10 +1,11 @@
-"use client";
+'use client';
 
 import React, { useEffect, useRef, useState } from "react";
 import { PathName } from "@/routers/types";
 import Header from "./Header";
 import { usePathname } from "next/navigation";
 import { useThemeMode } from "@/utils/useThemeMode";
+import DashboardHeader from "./DashboardHeader"; // Import DashboardHeader
 
 const PAGES_HIDE_HEADER_BORDER: PathName[] = [
   "/listing-tool-detail",
@@ -44,6 +45,10 @@ const SiteHeader = () => {
   }, [pathname]);
 
   const renderHeader = () => {
+    if (pathname.startsWith("/dashboard")) {
+      return <DashboardHeader />;
+    }
+
     let headerClassName = "shadow-sm dark:border-b dark:border-neutral-700";
     if (PAGES_HIDE_HEADER_BORDER.includes(pathname as PathName)) {
       headerClassName = isTopOfPage

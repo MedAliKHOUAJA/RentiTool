@@ -1,21 +1,26 @@
 import React from "react";
-import ToolCard from "@/components/Cards/ToolCard";
 import BgGlassmorphism from "@/components/BgGlassmorphism";
 import SectionGridCategoryBox from "@/components/SectionGridCategoryBox";
 import { DEMO_TOOL_CATEGORIES } from "@/data/taxonomies";
 import SectionHowItWork from "@/components/SectionHowItWork";
 import SectionOurFeatures from "@/components/SectionOurFeatures";
-import { ToolDataType } from "@/data/types";
+import { ToolDetails } from "@/features/tools/domain/tool-details";
+import ToolCard from "@/components/Cards/ToolCard";
 
 export const dynamic = 'force-dynamic';
 
 async function getTools() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tools?limit=8`, { cache: 'no-store' });
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/tools`;
+    console.log("Fetching all tools from:", url);
+    const res = await fetch(url, { cache: 'no-store' });
+    console.log("Response status:", res.status);
+    const data = await res.json();
+    console.log("All tools data:", data);
     if (!res.ok) {
       return [];
     }
-    return res.json();
+    return data.tools;
   } catch (error) {
     console.error(error);
     return [];
@@ -23,7 +28,7 @@ async function getTools() {
 }
 
 async function PageHome() {
-  const tools: ToolDataType[] = await getTools();
+  const tools: ToolDetails[] = await getTools();
 
   return (
     <main className="nc-PageHome relative overflow-hidden">
@@ -72,7 +77,7 @@ async function PageHome() {
                 <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {tools && tools.length > 0 ? (
                         tools.map((tool) => (
-                            <ToolCard key={tool.id} data={tool} />
+                            <ToolCard key={tool.toolId} data={tool} />
                         ))
                     ) : (
                         <p>Aucun outil à afficher pour le moment.</p>

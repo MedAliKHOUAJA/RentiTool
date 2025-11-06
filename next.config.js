@@ -127,10 +127,7 @@ const withPWA = require("next-pwa")({
 
 const nextConfig = {
   reactStrictMode: false,
-  experimental: {
-    appDir: true,
-    typedRoutes: true,
-  },
+
   images: {
     remotePatterns: [
       {
@@ -161,4 +158,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig;

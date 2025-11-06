@@ -1,19 +1,19 @@
 'use client';
 
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+
 import { ToolDetails } from '@/features/tools/domain/tool-details';
 import GallerySlider from '@/components/GallerySlider';
 import StartRating from '@/components/StartRating';
 import CardAuthorBox from '@/components/CardAuthorBox';
 import NcInputNumber from '@/components/NcInputNumber';
 import ModalSelectDate from '@/components/ModalSelectDate';
-
-// 🆕 IMPORTS REVIEWS
 import { ReviewList } from '@/features/reviews/components/ReviewList';
 import { ReviewStats } from '@/features/reviews/components/ReviewStats';
 import { WriteReviewModal } from '@/features/reviews/components/WriteReviewModal';
 import { getMainRating } from '@/features/reviews/types';
+import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth'; 
 
 const ToolDetailPageContent = () => {
   console.log('🟢 [START] Composant listing-tool-detail chargé');
@@ -28,75 +28,103 @@ const ToolDetailPageContent = () => {
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
-  const [currentUser, setCurrentUser] = useState<{ userId: string } | null>(null);
+  const { user: currentUser, loading: userLoading } = useAuth();
   const [activeRentalId, setActiveRentalId] = useState<number | null>(null);
 
-  const fetchTool = useCallback(async () => {
-    console.log('🟢 [FETCH] === DÉBUT FETCH ===');
-    console.log('🟢 [FETCH] toolId à fetcher:', toolId);
+ 
+  useEffect(() => {
+    console.log('🟢🟢🟢 [EFFECT] useEffect TOOL déclenché');
+    console.log('🟢🟢🟢 [EFFECT] toolId:', toolId);
     
     if (!toolId) {
-      console.log('🔴 [FETCH] Pas de toolId, abandon fetch');
+      console.log('🔴🔴🔴 [EFFECT] Pas de toolId, abandon');
+      setLoading(false);
       return;
     }
+
+    console.log('🟢🟢🟢 [EFFECT] On va fetcher maintenant');
+
+    const fetchTool = async () => {
+      console.log('🟢🟢🟢 [FETCH] === DÉBUT FETCH ===');
+      console.log('🟢🟢🟢 [FETCH] toolId à fetcher:', toolId);
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const url = `/api/tools/${toolId}`;
+        console.log('🟢🟢🟢 [FETCH] URL appelée:', url);
+        console.log('🟢🟢🟢 [FETCH] 🚀 Lancement du fetch...');
+        
+        const response = await fetch(url);
+        console.log('🟢🟢🟢 [FETCH] ✅ Réponse reçue, status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          console.error('🔴🔴🔴 [FETCH] Erreur HTTP:', response.status);
+          throw new Error('Tool not found');
+        }
+        
+        const data = await response.json();
+        console.log('🟢🟢🟢 [FETCH] ===== DATA COMPLÈTE =====');
+        console.log('🟢🟢🟢 [FETCH] Données brutes:', data);
+        console.log('🟢🟢🟢 [FETCH] images:', data.images);
+        console.log('🟢🟢🟢 [FETCH] imagePrimary:', data.imagePrimary);
+        console.log('🟢🟢🟢 [FETCH] toolReviews.length:', data.toolReviews?.length);
+        console.log('🟢🟢🟢 [FETCH] ownerReviews.length:', data.ownerReviews?.length);
+        console.log('🟢🟢🟢 [FETCH] === FIN DATA ===');
+        
+        setToolDetails(data);
+        console.log('🟢🟢🟢 [FETCH] toolDetails mis à jour dans le state');
+        
+      } catch (err: any) {
+        console.error('🔴🔴🔴 [FETCH] Exception attrapée:', err);
+        console.error('🔴🔴🔴 [FETCH] Message:', err.message);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+        console.log('🟢🟢🟢 [FETCH] === FIN FETCH ===');
+      }
+    };
+
+    fetchTool();
+  }, [toolId]); // ✅ Dépendance directe sur toolId
+
+  // ✅ 2. Fonction de refresh pour les modals
+  const refreshTool = useCallback(async () => {
+    if (!toolId) return;
+    
+    console.log('🔄 [REFRESH] Rafraîchissement des données...');
     
     try {
-      setLoading(true);
-      const url = `/api/tools/${toolId}`;
-      console.log('🟢 [FETCH] URL appelée:', url);
-      
-      const response = await fetch(url);
-      console.log('🟢 [FETCH] Réponse reçue, status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        console.error('🔴 [FETCH] Erreur HTTP:', response.status);
-        throw new Error('Tool not found');
-      }
+      const response = await fetch(`/api/tools/${toolId}`);
+      if (!response.ok) throw new Error('Erreur refresh');
       
       const data = await response.json();
-      console.log('🟢 [FETCH] ===== DATA COMPLÈTE =====');
-      console.log('🟢 [FETCH] Données brutes:', data);
-      console.log('🟢 [FETCH] title:', data.title);
-      console.log('🟢 [FETCH] toolReviews:', data.toolReviews);
-      console.log('🟢 [FETCH] toolReviews.length:', data.toolReviews?.length);
-      console.log('🟢 [FETCH] ownerReviews:', data.ownerReviews);
-      console.log('🟢 [FETCH] ownerReviews.length:', data.ownerReviews?.length);
-      console.log('🟢 [FETCH] === FIN DATA ===');
-      
       setToolDetails(data);
-      console.log('🟢 [FETCH] toolDetails mis à jour dans le state');
-      
-    } catch (err: any) {
-      console.error('🔴 [FETCH] Exception attrapée:', err);
-      console.error('🔴 [FETCH] Message:', err.message);
-      console.error('🔴 [FETCH] Stack:', err.stack);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-      console.log('🟢 [FETCH] === FIN FETCH ===');
+      console.log('✅ [REFRESH] Données rafraîchies');
+    } catch (err) {
+      console.error('🔴 [REFRESH] Erreur:', err);
     }
   }, [toolId]);
 
+  // ✅ 3. Active rental ID
   useEffect(() => {
-    console.log('🟢 [EFFECT] Initialisation user et rental');
-    setCurrentUser({ userId: "420430c2-0338-4612-aa74-65f0a82900fe" });
+    // TODO: Fetch active rental ID from the backend
     setActiveRentalId(1);
-    console.log('🟢 [EFFECT] User et rental initialisés');
   }, []);
 
-  useEffect(() => {
-    console.log('🟢 [EFFECT] useEffect fetchTool déclenché');
-    fetchTool();
-  }, [fetchTool]);
-
+  // ✅ 4. Logs de render
   console.log('🟢 [RENDER] === DÉBUT RENDER ===');
   console.log('🟢 [RENDER] loading:', loading);
+  console.log('🟢 [RENDER] userLoading:', userLoading);
+  console.log('🟢 [RENDER] currentUser:', currentUser ? 'existe' : 'null');
   console.log('🟢 [RENDER] error:', error);
   console.log('🟢 [RENDER] toolDetails:', toolDetails ? 'existe' : 'null');
 
+  // ✅ 5. Conditions d'affichage - NE BLOQUER QUE SI loading (pas userLoading)
   if (loading) {
-    console.log('🟡 [RENDER] Retour loading...');
-    return <div className="container py-10">Chargement...</div>;
+    console.log('🟡 [RENDER] Tool loading...');
+    return <div className="container py-10">Chargement de l'outil...</div>;
   }
   
   if (error) {
@@ -118,18 +146,17 @@ const ToolDetailPageContent = () => {
     toolReviews, 
     ownerReviews, 
     rentalPricePerDay, 
-    imageUrl 
+    images,
+    imagePrimary
   } = toolDetails;
 
-  console.log('🟢 [DATA] === DONNÉES DESTRUCTURÉES ===');
-  console.log('🟢 [DATA] title:', title);
-  console.log('🟢 [DATA] toolReviews:', toolReviews);
-  console.log('🟢 [DATA] toolReviews est un tableau?', Array.isArray(toolReviews));
-  console.log('🟢 [DATA] toolReviews.length:', toolReviews?.length || 0);
-  
-  if (toolReviews && toolReviews.length > 0) {
-    console.log('🟢 [DATA] Premier review:', toolReviews[0]);
-  }
+  // ✅ Construire le tableau d'URLs pour la galerie
+  const galleryImgs = images?.map(img => `/api/images/${img.imageId}`) || 
+    (imagePrimary ? [`/api/images/${imagePrimary.imageId}`] : []);
+
+  console.log('🟢 [DATA] galleryImgs construit:', galleryImgs);
+  console.log('🟢 [DATA] images array:', images);
+  console.log('🟢 [DATA] imagePrimary:', imagePrimary);
 
   // ✅ Calcul des statistiques TOOL
   console.log('🟡 [STATS] ======= CALCUL TOOL STATS =======');
@@ -150,12 +177,10 @@ const ToolDetailPageContent = () => {
       console.log('🟡 [STATS]   ratingId:', review.ratingId);
       console.log('🟡 [STATS]   toolStatus:', review.toolStatus);
       console.log('🟡 [STATS]   fiability:', review.fiability);
-      console.log('🟡 [STATS]   ratedEntityTypeId:', review.ratedEntityTypeId);
       
       try {
         const rating = getMainRating(review);
         console.log('🟡 [STATS]   → mainRating:', rating);
-        console.log('🟡 [STATS]   → arrondi:', Math.round(rating));
         return rating;
       } catch (error) {
         console.error('🔴 [STATS]   ❌ Erreur getMainRating:', error);
@@ -166,8 +191,6 @@ const ToolDetailPageContent = () => {
     console.log('🟡 [STATS] Tous les ratings:', ratings);
     
     const sum = ratings.reduce((acc, r) => acc + r, 0);
-    console.log('🟡 [STATS] Somme des ratings:', sum);
-    
     const averageRating = sum / ratings.length;
     console.log('🟡 [STATS] Moyenne calculée:', averageRating);
 
@@ -175,14 +198,10 @@ const ToolDetailPageContent = () => {
       1: 0, 2: 0, 3: 0, 4: 0, 5: 0
     };
 
-    ratings.forEach((rating, index) => {
+    ratings.forEach((rating) => {
       const rounded = Math.round(rating);
-      console.log(`🟡 [STATS] Distribution: rating ${rating} → arrondi ${rounded}`);
-      
       if (rounded >= 1 && rounded <= 5) {
         distribution[rounded as 1 | 2 | 3 | 4 | 5]++;
-      } else {
-        console.warn('🟠 [STATS] Rating hors limites:', rounded);
       }
     });
 
@@ -199,8 +218,6 @@ const ToolDetailPageContent = () => {
     
     return result;
   })();
-
-  console.log('🟢 [STATS] toolStats FINAL stocké:', toolStats);
 
   // ✅ Calcul des statistiques OWNER
   console.log('🟡 [STATS] === CALCUL OWNER STATS ===');
@@ -244,7 +261,6 @@ const ToolDetailPageContent = () => {
   console.log('🟢 [DISPLAY] Variables pour affichage:');
   console.log('🟢 [DISPLAY]   reviewStart:', reviewStart);
   console.log('🟢 [DISPLAY]   reviewCount:', reviewCount);
-  console.log('🟢 [DISPLAY]   canLeaveReview:', canLeaveReview);
   console.log('🟢 [RENDER] === FIN RENDER, début JSX ===');
 
   const handleBooking = async () => {
@@ -280,7 +296,7 @@ const ToolDetailPageContent = () => {
   return (
     <div className="nc-ListingDetailPage">
       <GallerySlider 
-        galleryImgs={imageUrl ? [imageUrl] : []}
+        galleryImgs={galleryImgs}
         className="max-w-screen-xl mx-auto rounded-3xl"
       />
 
@@ -295,9 +311,11 @@ const ToolDetailPageContent = () => {
                 <span className="text-sm text-neutral-500 dark:text-neutral-400">
                   ({reviewCount} avis)
                 </span>
-                <span className="block text-neutral-500 dark:text-neutral-400">
-                  {owner.locationId}
-                </span>
+                {owner.locationName && (
+                  <span className="block text-neutral-500 dark:text-neutral-400">
+                    📍 {owner.locationName}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -327,7 +345,7 @@ const ToolDetailPageContent = () => {
                     ratedToolId={toolId || undefined}
                     ratedUserId={undefined}
                     ratedEntityTypeId={1}
-                    onReviewSubmitted={fetchTool} 
+                    onReviewSubmitted={refreshTool} 
                   />
                 ) : (
                   <div className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -360,7 +378,7 @@ const ToolDetailPageContent = () => {
                     ratedToolId={undefined}
                     ratedUserId={owner.userId}
                     ratedEntityTypeId={3}
-                    onReviewSubmitted={fetchTool} 
+                    onReviewSubmitted={refreshTool}
                   />
                 ) : (
                   <div className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -408,9 +426,9 @@ const ToolDetailPageContent = () => {
                       </svg>
                     </button>
                   )}
-                  onChangeDate={(start, end) => { 
-                    setSelectedStartDate(start); 
-                    setSelectedEndDate(end); 
+                  onChangeDate={(start, end) => {
+                    setSelectedStartDate(start);
+                    setSelectedEndDate(end);
                   }}
                 />
               </div>

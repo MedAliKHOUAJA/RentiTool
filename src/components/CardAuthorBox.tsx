@@ -8,7 +8,12 @@ import { StarIcon } from "@heroicons/react/24/solid";
 
 export interface CardAuthorBoxProps {
   className?: string;
-  author: User;
+  author: {
+    firstName: string;
+    lastName: string;
+    locationName?: string;
+    starRating?: number;
+  };
   index?: number;
 }
 

@@ -7,7 +7,7 @@ import {
   DEMO_EXPERIENCES_CATEGORIES,
   DEMO_TOOL_CATEGORIES,
 } from "./taxonomies";
-import { CarDataType, ExperiencesDataType, StayDataType, ToolDataType } from "./types";
+import { CarDataType, ExperiencesDataType, StayDataType } from "./types";
 import { DEMO_AUTHORS } from "./authors";
 import car1 from "@/images/cars/1.png";
 import car2 from "@/images/cars/2.png";
@@ -26,6 +26,7 @@ import car14 from "@/images/cars/14.png";
 import car15 from "@/images/cars/15.png";
 import car16 from "@/images/cars/16.png";
 import { Route } from "@/routers/types";
+import { Tool } from "@/features/tools/domain/tool";
 
 const carsImgs = [
   car1, car2, car3, car4, car5, car6, car7, car8,
@@ -80,19 +81,5 @@ const DEMO_CAR_LISTINGS = __carsListing.map((post, index): CarDataType => {
   };
 });
 
-const DEMO_TOOL_LISTINGS = __toolListing.map((post, index): ToolDataType => {
-  const category = DEMO_TOOL_CATEGORIES.filter(
-    (taxonomy) => taxonomy.id === post.listingCategoryId
-  )[0];
-  return {
-    ...post,
-    id: post.id,
-    author: DEMO_AUTHORS.filter((user) => user.id === post.authorId)[0],
-    listingCategory: category,
-    href: `/listing-tool-detail?id=${post.id}` as Route,
-    saleOff: !index ? "-15% today" : post.saleOff,
-    isAds: !index ? true : post.isAds,
-  };
-});
 
-export { DEMO_STAY_LISTINGS, DEMO_EXPERIENCES_LISTINGS, DEMO_CAR_LISTINGS, DEMO_TOOL_LISTINGS };
+export { DEMO_STAY_LISTINGS, DEMO_EXPERIENCES_LISTINGS, DEMO_CAR_LISTINGS };

@@ -2,6 +2,7 @@
 import { User } from "@/features/users/domain/user";
 import { Review } from "@/features/reviews/types";
 import { Route } from "@/routers/types"; // Import Route
+import { Image } from "./image";
 
 export interface Tool {
   toolId: number;
@@ -16,7 +17,7 @@ export interface Tool {
   rentalPricePerWeek: number;
   isActive: boolean;
   statusId: number;
-  imageUrl?: string;
+  image?: Image;
   reviews?: Review[];
   href: Route<string>; // Add href property
 }

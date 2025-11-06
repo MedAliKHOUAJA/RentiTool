@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import { Poppins } from "next/font/google";
 import SiteHeader from "./(client-components)/(Header)/SiteHeader";
 import ClientCommons from "./ClientCommons";
@@ -9,6 +10,7 @@ import Footer from "@/components/Footer";
 import FooterNav from "@/components/FooterNav";
 import { Metadata } from "next";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { Providers } from "./providers";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -20,6 +22,9 @@ export const metadata: Metadata = {
   title: "RentiTool",
   description: "La plateforme de location de matériel entre particuliers.",
   manifest: "/manifest.json",
+};
+
+export const viewport = {
   themeColor: "#ffffff",
 };
 
@@ -33,12 +38,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={poppins.className}>
       <body className="bg-white text-base dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200">
-        <ClientCommons />
-        <SiteHeader />
-        {children}
-        <FooterNav />
-        <Footer />
-        <OfflineBanner />
+        <Providers>
+          <ClientCommons />
+          <SiteHeader />
+          {children}
+          <FooterNav />
+          <Footer />
+          <OfflineBanner />
+        </Providers>
       </body>
     </html>
   );
