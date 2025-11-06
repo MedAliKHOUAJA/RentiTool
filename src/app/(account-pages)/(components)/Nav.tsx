@@ -14,6 +14,8 @@ export const Nav = () => {
     "/account" as Route,
     "/account-password" as Route,
     "/tools-management" as Route,
+    "/reviews" as Route, // This will be for tool reviews
+    "/reviews/about-me" as Route, // New link for owner reviews
   ];
 
   return (
@@ -31,7 +33,7 @@ export const Nav = () => {
                   : "border-transparent"
               }`}
             >
-              {item.replace("-", " ").replace("/", " ")}
+              {item === "/reviews" ? "Avis sur mes outils" : item === "/reviews/about-me" ? "Avis sur moi" : item.replace("-", " ").replace("/", " ")}
             </Link>
           );
         })}

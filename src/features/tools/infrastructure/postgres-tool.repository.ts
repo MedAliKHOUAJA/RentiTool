@@ -567,9 +567,11 @@ export class PostgresToolRepository implements ToolRepository {
         r."CreatedAt",
         u."userId",
         u."FirstName",
-        u."LastName"
+        u."LastName",
+        rr."ResponseTexte" as "response"
       FROM "public"."Ratings" r
       JOIN "public"."User" u ON r."RaterId" = u."userId"
+      LEFT JOIN "public"."RatingsResponses" rr ON r."RatingId" = rr."RatingId"
       WHERE r."RatedToolId" = $1 AND r."RatedEntityTypeId" = 1
       ORDER BY r."CreatedAt" DESC
     `;
@@ -600,10 +602,12 @@ export class PostgresToolRepository implements ToolRepository {
         rater_u."LastName" as "rater_lastName",
         rated_u."userId" as "rated_userId",
         rated_u."FirstName" as "rated_firstName",
-        rated_u."LastName" as "rated_lastName"
+        rated_u."LastName" as "rated_lastName",
+        rr."ResponseTexte" as "response"
       FROM "public"."Ratings" r
       JOIN "public"."User" rater_u ON r."RaterId" = rater_u."userId"
       JOIN "public"."User" rated_u ON r."RatedUserId" = rated_u."userId"
+      LEFT JOIN "public"."RatingsResponses" rr ON r."RatingId" = rr."RatingId"
       WHERE r."RatedUserId" = $1 AND r."RatedEntityTypeId" = 3
       ORDER BY r."CreatedAt" DESC
     `;
@@ -720,6 +724,7 @@ export class PostgresToolRepository implements ToolRepository {
       ponctuality: row.Ponctuality || undefined,
       fiability: row.Fiability || undefined,
       comment: row.Comment || undefined,
+      response: row.response || undefined,
       feelingTypeId: row.FeelingTypeId || undefined,
       feelingScorePositive: row.FeelingScorePositive || undefined,
       feelingScoreNegative: row.FeelingScoreNegative || undefined,
