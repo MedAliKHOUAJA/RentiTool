@@ -1,6 +1,36 @@
 import { NextResponse } from "next/server";
 import { query } from "@/db";
 
+// Fonction pour générer et logger un message automatique (non-bloquant)
+async function generateAutoMessage(rentalId: number, messageType: 'acceptance' | 'rejection') {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/ai/generate-message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rentalId,
+        messageType,
+        language: 'fr'
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`✅ Message ${messageType} généré pour la réservation #${rentalId}:`, data.message);
+      // Ici vous pouvez ajouter l'envoi par email, SMS, notification, etc.
+      return data.message;
+    } else {
+      console.warn(`⚠️ Impossible de générer le message pour la réservation #${rentalId}`);
+    }
+  } catch (error) {
+    // Ne pas bloquer le processus si la génération de message échoue
+    console.warn(`⚠️ Erreur lors de la génération du message pour la réservation #${rentalId}:`, error);
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -46,6 +76,12 @@ export async function POST(request: Request) {
     } catch (toolError) {
       console.log('Tool update failed, but rental request was updated:', toolError);
     }
+    
+    // Générer automatiquement un message personnalisé (non-bloquant)
+    const messageType = action === 'accept' ? 'acceptance' : 'rejection';
+    generateAutoMessage(rentalId, messageType).catch(err => {
+      console.warn('Message generation failed (non-critical):', err);
+    });
     
     return NextResponse.json({
       success: true,

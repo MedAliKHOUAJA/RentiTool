@@ -1,0 +1,17 @@
+# Configuration Gemini AI
+# Ce fichier est une référence - La vraie configuration est dans .env.local
+
+GEMINI_API_KEY=AIzaSyBr6cJtLzJCQjbcfT-xJEMm1mfWL3zAewE
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# IMPORTANT: 
+# Le fichier .env.local se trouve à la racine du projet (C:\Users\DELL\Desktop\Next\.env.local)
+# 
+# Si vous ne voyez pas le fichier .env.local dans votre IDE:
+# 1. Les fichiers .env sont souvent cachés par défaut
+# 2. Activez l'affichage des fichiers cachés dans votre IDE
+# 3. Ou utilisez l'explorateur de fichiers Windows pour le voir
+#
+# Pour vérifier que le fichier existe:
+# Ouvrez PowerShell dans le dossier du projet et tapez: Get-Content .env.local
+

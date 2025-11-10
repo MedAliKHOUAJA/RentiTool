@@ -16,7 +16,9 @@ export async function POST() {
           "TotalPrice" NUMERIC(10,2) NOT NULL,
           "RentalDateStart" DATE NOT NULL,
           "RentalDateEnd" DATE NOT NULL,
-          "StatusId" INTEGER NOT NULL DEFAULT 1
+          "StatusId" INTEGER NOT NULL DEFAULT 1,
+          "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          "UpdatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
       `);
       results.push('✅ Rentals table created/verified');

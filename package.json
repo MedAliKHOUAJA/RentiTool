@@ -11,6 +11,7 @@
     "db:tables": "node ./scripts/db-list-tables.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@headlessui/react": "^1.7.14",
     "@heroicons/react": "^2.0.18",
     "@tailwindcss/aspect-ratio": "^0.4.2",

@@ -147,6 +147,30 @@ export async function POST(request: NextRequest) {
       // Don't fail the rental creation if payment creation fails
     }
 
+    // Générer automatiquement un message de confirmation (non-bloquant)
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      fetch(`${baseUrl}/api/ai/generate-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rentalId: newRental.RentalId,
+          messageType: 'confirmation',
+          language: 'fr'
+        })
+      }).then(async (response) => {
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ Message de confirmation généré pour la réservation #${newRental.RentalId}`);
+        }
+      }).catch(err => {
+        console.warn('Message generation failed (non-critical):', err);
+      });
+    } catch (msgErr) {
+      // Ignorer les erreurs de génération de message
+      console.warn('Could not generate confirmation message:', msgErr);
+    }
+
     return NextResponse.json({
       success: true,
       rental: {
