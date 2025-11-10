@@ -1,198 +1,112 @@
-import { NextResponse } from "next/server";
-import { query } from "@/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserIdFromToken } from '@/features/users/application/get-user-id-from-token.service';
+import { PostgresToolRepository } from '@/features/tools/infrastructure/postgres-tool.repository';
+import { GetToolImagesUseCase } from '@/features/tools/application/use-cases/get-tool-images.use-case';
+import { UploadToolImageUseCase } from '@/features/tools/application/use-cases/upload-tool-image.use-case';
 
-const resolveTable = async (candidates: string[]) => {
-  const parseIdent = (ident: string): { schema: string; table: string } => {
-    const defSchema = "public";
-    if (ident.includes(".")) {
-      const [schemaRaw, tableRaw] = ident.split(".", 2);
-      const unquote = (s: string) => s.replace(/^"|"$/g, "");
-      return { schema: unquote(schemaRaw), table: unquote(tableRaw) };
-    }
-    return { schema: defSchema, table: ident.replace(/^"|"$/g, "") };
-  };
-  for (const cand of candidates) {
-    const { schema, table } = parseIdent(cand!);
-    const colsRes = await query(
-      `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`,
-      [schema, table]
-    );
-    if (colsRes.rows.length)
-      return {
-        schema,
-        table,
-        columns: colsRes.rows.map((r: any) => r.column_name as string),
-      };
-  }
-  return null;
-};
 
+export const dynamic = 'force-dynamic';
+
+/**
+ * GET - Récupérer toutes les images d'un outil
+ */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const toolId = params.id;
-    const imagesEnv = process.env.IMAGES_TABLE?.trim();
-    const imgCandidates = [
-      imagesEnv,
-      // Common names
-      "images",
-      "Images",
-      'public."Images"',
-      "public.images",
-      "image",
-      "Image",
-      'public."Image"',
-      "public.image",
-      // Tool-specific variants
-      "toolimages",
-      "ToolImages",
-      'public."ToolImages"',
-      "public.toolimages",
-      "toolimage",
-      "ToolImage",
-      'public."ToolImage"',
-      "public.toolimage",
-      "tool_images",
-      "Tool_Images",
-      'public."Tool_Images"',
-      "public.tool_images",
-    ].filter(Boolean) as string[];
-    const imgResolved = await resolveTable(imgCandidates);
-    if (!imgResolved)
-      return new NextResponse("Images table not found", { status: 500 });
-    const { schema: ischema, table: itable, columns: icols } = imgResolved;
-    const lowerMap: Record<string, string> = Object.fromEntries(
-      icols.map((c) => [c.toLowerCase(), c])
-    );
-    const has = (...names: string[]) =>
-      names.map((n) => lowerMap[n.toLowerCase()]).find(Boolean);
-    const pk = has("imageid", "id", "image_id", "toolimageid", "tool_image_id");
-    const toolCol = has("toolid", "tool_id", "toolid");
-    const isPrimary = has(
-      "isprimarytoolimage",
-      "is_primary",
-      "isprimary",
-      "is_primary_tool_image"
-    );
-    if (!pk || !toolCol)
-      return new NextResponse("Images schema invalid", { status: 500 });
-    const q = (s: string) => `"${s}"`;
-    const from = `${q(ischema)}.${q(itable)}`;
-    const sql = `SELECT ${q(pk)} as id, ${q(
-      isPrimary || pk
-    )} as primary FROM ${from} WHERE ${q(toolCol)} = $1 ORDER BY ${q(
-      pk
-    )} DESC LIMIT 50`;
-    const res = await query(sql, [toolId]);
-    const images = res.rows.map((r: any) => ({
-      id: r.id,
-      isPrimary: Boolean(r.primary),
-      url: `/api/images/${r.id}`,
-    }));
+
+    const toolRepository = new PostgresToolRepository();
+    const getToolImagesUseCase = new GetToolImagesUseCase(toolRepository);
+
+    const images = await getToolImagesUseCase.execute(toolId);
+
     return NextResponse.json({ images });
-  } catch (err: any) {
-    console.error("/api/tools/[id]/images GET error:", err?.message || err);
-    return new NextResponse("Failed to list images", { status: 500 });
+
+  } catch (error: any) {
+    console.error('❌ Error fetching tool images:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch images' },
+      { status: 500 }
+    );
   }
 }
 
+/**
+ * POST - Ajouter une nouvelle image à un outil
+ */
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = getUserIdFromToken(request);
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const toolId = params.id;
-    const form = await request.formData();
-    const file = form.get("file") as File | null;
-    if (!file) return new NextResponse("Missing file", { status: 400 });
-    const buf = Buffer.from(await file.arrayBuffer());
 
-    const imagesEnv = process.env.IMAGES_TABLE?.trim();
-    const imgCandidates = [
-      imagesEnv,
-      "images",
-      "Images",
-      'public."Images"',
-      "public.images",
-      "image",
-      "Image",
-      'public."Image"',
-      "public.image",
-      "toolimages",
-      "ToolImages",
-      'public."ToolImages"',
-      "public.toolimages",
-      "toolimage",
-      "ToolImage",
-      'public."ToolImage"',
-      "public.toolimage",
-      "tool_images",
-      "Tool_Images",
-      'public."Tool_Images"',
-      "public.tool_images",
-    ].filter(Boolean) as string[];
-    const imgResolved = await resolveTable(imgCandidates);
-    if (!imgResolved)
-      return new NextResponse("Images table not found", { status: 500 });
-    const { schema: ischema, table: itable, columns: icols } = imgResolved;
-    const lowerMap: Record<string, string> = Object.fromEntries(
-      icols.map((c) => [c.toLowerCase(), c])
-    );
-    const has = (...names: string[]) =>
-      names.map((n) => lowerMap[n.toLowerCase()]).find(Boolean);
-    const pk = has("imageid", "id", "image_id", "toolimageid", "tool_image_id");
-    const bin = has(
-      "imagebinary",
-      "data",
-      "binary",
-      "blob",
-      "content",
-      "bytes",
-      "file",
-      "filedata"
-    );
-    const toolCol = has("toolid", "tool_id", "toolid");
-    const isPrimary = has(
-      "isprimarytoolimage",
-      "is_primary",
-      "isprimary",
-      "is_primary_tool_image"
-    );
-    if (!pk || !bin || !toolCol)
-      return new NextResponse("Images schema invalid", { status: 500 });
-    const q = (s: string) => `"${s}"`;
-    const from = `${q(ischema)}.${q(itable)}`;
+    // Vérifier la propriété de l'outil
+    const toolRepository = new PostgresToolRepository();
+    const tool = await toolRepository.findById(toolId);
 
-    // If table tracks primary flag, make the first image for this tool primary
-    let makePrimary = false;
-    if (isPrimary) {
-      const check = await query(
-        `SELECT 1 FROM ${from} WHERE ${q(toolCol)}=$1 LIMIT 1`,
-        [toolId]
+    if (!tool) {
+      return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
+    }
+
+    // Récupérer le fichier
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Valider le type de fichier
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Only JPEG, PNG, WEBP, and GIF are allowed.' },
+        { status: 400 }
       );
-      makePrimary = check.rows.length === 0;
     }
 
-    const cols = [q(bin), q(toolCol)];
-    const values: any[] = [buf, toolId];
-    if (isPrimary) {
-      cols.push(q(isPrimary));
-      values.push(makePrimary);
+    // Valider la taille (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: 'File too large. Maximum size is 5MB.' },
+        { status: 400 }
+      );
     }
-    const placeholders = cols.map((_, i) => `$${i + 1}`);
-    const sql = `INSERT INTO ${from} (${cols.join(
-      ","
-    )}) VALUES (${placeholders.join(",")}) RETURNING ${q(pk)} as id`;
-    const ins = await query(sql, values);
-    const idNew = ins.rows[0]?.id;
+
+    // Convertir en buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Use case
+    const uploadImageUseCase = new UploadToolImageUseCase(toolRepository);
+
+    const newImage = await uploadImageUseCase.execute({
+      file: buffer,
+      toolId,
+      userId,
+      ownerId: tool.owner.userId,
+    });
+
+    return NextResponse.json({
+      success: true,
+      image: newImage,
+    }, { status: 201 });
+
+  } catch (error: any) {
+    console.error('❌ Error uploading image:', error);
     return NextResponse.json(
-      { id: idNew, url: `/api/images/${idNew}`, isPrimary: makePrimary },
-      { status: 201 }
+      { error: error.message || 'Failed to upload image' },
+      { status: error.message === 'You do not own this tool' ? 403 : 500 }
     );
-  } catch (err: any) {
-    console.error("/api/tools/[id]/images POST error:", err?.message || err);
-    return new NextResponse("Failed to upload image", { status: 500 });
   }
 }

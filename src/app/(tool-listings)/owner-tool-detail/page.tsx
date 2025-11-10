@@ -8,12 +8,14 @@ import StartRating from "@/components/StartRating";
 import CardAuthorBox from "@/components/CardAuthorBox";
 import { Route } from "@/routers/types";
 import Link from "next/link";
-import { ToolDataType } from "@/features/tools/presentation/tool.dto";
+import { ToolDetails } from "@/features/tools/domain/tool-details";
+import { getMainRating } from "@/features/reviews/types";
+import { getImageUrl } from "@/features/images/utils/image-utils";
 
 const OwnerToolDetailPageContent = () => {
   const searchParams = useSearchParams();
   const toolId = searchParams.get("id");
-  const [tool, setTool] = useState<ToolDataType | null>(null);
+  const [tool, setTool] = useState<ToolDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,27 +42,34 @@ const OwnerToolDetailPageContent = () => {
 
   const {
     title,
-    address,
-    reviewStart,
-    reviewCount,
-    price,
-    saleOff,
-    desc,
-    author,
-    galleryImgs,
+    description,
+    owner,
+    toolReviews,
+    ownerReviews,
+    rentalPricePerDay,
+    images,
+    imagePrimary
   } = tool;
 
+  // ✅ Construire le tableau d'images pour la galerie
+  const galleryImgs = images && images.length > 0
+  ? images.map(img => getImageUrl(img))
+  : imagePrimary 
+    ? [getImageUrl(imagePrimary)]
+    : [];
 
-  const priceNumber =
-    Number(
-      String(price)
-        .replace(/[^0-9.,]/g, "")
-        .replace(",", ".")
-    ) || 0;
+
   const priceFormatted = new Intl.NumberFormat("fr-FR", {
     maximumFractionDigits: 0,
-  }).format(priceNumber);
-  const isAvailable = true;
+  }).format(rentalPricePerDay);
+  
+  const isAvailable = tool.isActive;
+  const reviewCount = toolReviews?.length || 0;
+  
+  // ✅ Calculer le rating moyen en utilisant getMainRating
+  const reviewStart = reviewCount > 0 
+    ? toolReviews.reduce((acc, review) => acc + getMainRating(review), 0) / reviewCount 
+    : 0;
 
   return (
     <div className="nc-OwnerToolDetailPage">
@@ -92,7 +101,7 @@ const OwnerToolDetailPageContent = () => {
           <div className="lg:col-span-7">
             <div className="rounded-3xl overflow-hidden bg-transparent">
               <GallerySlider
-                galleryImgs={galleryImgs || []}
+                galleryImgs={galleryImgs}
                 className="rounded-3xl"
                 ratioClass="h-[55vh] md:h-[60vh] lg:h-[70vh] xl:h-[75vh]"
                 imageClass="object-contain"
@@ -106,9 +115,9 @@ const OwnerToolDetailPageContent = () => {
             <div className="rounded-3xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 lg:p-7 shadow-sm">
               <div>
                 <div className="flex flex-wrap items-center gap-3 mb-3">
-                  {tool.listingCategory?.name && (
+                  {tool.categoryId && (
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
-                      {tool.listingCategory.name}
+                      Category {tool.categoryId}
                     </span>
                   )}
                 </div>
@@ -118,14 +127,13 @@ const OwnerToolDetailPageContent = () => {
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
                   <div className="flex items-center gap-2">
                     <StartRating
-                      reviewCount={reviewCount ?? 0}
-                      point={reviewStart ?? 0}
+                      reviewCount={reviewCount}
+                      point={reviewStart}
                     />
-                    <span>({reviewCount ?? 0} reviews)</span>
+                    <span>({reviewCount} reviews)</span>
                   </div>
-                  {address && <span className="truncate">{address}</span>}
-                  {saleOff && (
-                    <span className="text-red-500 font-medium">{saleOff}</span>
+                  {owner.locationName && (
+                    <span className="truncate">{owner.locationName}</span>
                   )}
                 </div>
               </div>
@@ -147,8 +155,6 @@ const OwnerToolDetailPageContent = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Owner view: no reservation UI */}
             </div>
           </div>
         </div>
@@ -159,7 +165,7 @@ const OwnerToolDetailPageContent = () => {
               <h2 className="text-xl font-semibold">Description</h2>
               <div className="mt-4 prose prose-neutral dark:prose-invert max-w-none">
                 <p className="leading-relaxed">
-                  {desc || "No description provided for this tool."}
+                  {description || "No description provided for this tool."}
                 </p>
               </div>
             </div>
@@ -167,7 +173,7 @@ const OwnerToolDetailPageContent = () => {
           <div>
             <div className="rounded-3xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 lg:p-8">
               <h2 className="text-xl font-semibold mb-4">About the owner</h2>
-              <CardAuthorBox author={author} />
+              <CardAuthorBox author={owner} />
             </div>
           </div>
         </div>

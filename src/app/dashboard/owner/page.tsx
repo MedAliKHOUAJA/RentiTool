@@ -1,37 +1,30 @@
-// src/app/dashboard/owner/page.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Tool } from '@/features/tools/domain/tool';
 
 export default function OwnerDashboard() {
-  const [user, setUser] = useState<any>(null);
-  const router = useRouter();
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Vérifier si l'utilisateur est connecté
-    const checkAuth = async () => {
+    const fetchTools = async () => {
       try {
-        const response = await fetch('/api/auth/me');
-        if (!response.ok) {
-          router.push('/login');
-          return;
+        const response = await fetch('/api/tools/my-tools');
+        if (response.ok) {
+          const data = await response.json();
+          setTools(data.tools);
         }
-        const userData = await response.json();
-        setUser(userData);
       } catch (error) {
-        router.push('/login');
+        console.error('Erreur lors de la récupération des outils:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkAuth();
-  }, [router]);
+    fetchTools();
+  }, []);
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-  };
-
-  if (!user) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl">Chargement...</div>
@@ -40,125 +33,24 @@ export default function OwnerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">RentiTool</h1>
-              <span className="ml-4 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                Propriétaire
-              </span>
+    <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div className="px-4 py-6 sm:px-0">
+        <h2 className="text-2xl font-semibold mb-4">Mes outils</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {tools.map((tool) => (
+            <div key={tool.toolId} className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <h3 className="text-lg font-medium text-gray-900">{tool.title}</h3>
+                <p className="mt-2 text-sm text-gray-500">{tool.description}</p>
+                <div className="mt-4">
+                  <span className="text-lg font-bold">{tool.rentalPricePerDay} €</span>
+                  <span className="text-sm text-gray-500"> / jour</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Bonjour, {user.firstName} {user.lastName}</span>
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
-              >
-                Déconnexion
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            {/* Card 1: Statistiques */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold">🏠</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Biens loués</dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">12</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Revenus */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold">💰</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Revenus mensuels</dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">4,200 €</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Locations actives */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold">📋</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Locations actives</dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">8</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Recent Activities */}
-          <div className="mt-8 bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Dernières activités</h3>
-              <div className="mt-4 space-y-4">
-                <div className="flex items-center justify-between py-3 border-b">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Nouveau locataire</p>
-                    <p className="text-sm text-gray-500">Appartement Paris 15e</p>
-                  </div>
-                  <span className="text-sm text-gray-500">Aujourd'hui</span>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Paiement reçu</p>
-                    <p className="text-sm text-gray-500">Studio Lyon</p>
-                  </div>
-                  <span className="text-sm text-gray-500">Hier</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

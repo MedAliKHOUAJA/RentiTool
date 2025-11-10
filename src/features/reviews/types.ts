@@ -61,8 +61,10 @@ export interface Review {
   
   images?: string[];
   response?: string;
+  responderId?: string; // Added for owner's reply
   respondedAt?: Date;
   createdAt: Date;
+  toolTitle?: string; // Added for display in ReviewCard
 }
 
 export interface CreateReviewDto {

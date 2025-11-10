@@ -20,3 +20,9 @@ export interface Image {
     classificationId: ClassificationId;
     classificationName: string;  
   }
+
+  export interface ImageDto {
+    imageId: number;
+    url: string; 
+    isPrimary: boolean;
+  }

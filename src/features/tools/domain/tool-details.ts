@@ -1,11 +1,11 @@
 
 import { Tool } from "./tool";
-import { Image } from "./image";
+import { Image, ImageDto } from "./image";
 import { Review } from "@/features/reviews/types";
 
 export interface ToolDetails extends Tool {
   toolReviews: Review[];
   ownerReviews: Review[];
-  images?: Image[];        
+  images?: Image[];
   imagePrimary?: Image;
 }
