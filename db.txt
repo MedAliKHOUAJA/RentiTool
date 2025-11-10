@@ -80,3 +80,28 @@ Locations
 "Ben Arous"	"Megrine"	2033	37
 "Ben Arous"	"Mohamedia"	2044	38
 "Ben Arous"	"Fouchana"	2083	39
+
+
+
+Images
+
+"ImageId", "ImageBinary", "UserId", "BusinessCardId", "ToolId", "RatingId", "IsPrimaryToolImage", "ClassificationId"
+
+1	"binary data"			1		true	4
+4	"binary data"			4		true	4
+5	"binary data"			1		false	4
+8	"binary data"			4		false	4
+13	"binary data"			1		false	4
+23	"binary data"			3		true	4
+26	"binary data"			5		true	4
+28	"binary data"			5		false	4
+29	"binary data"			3		false	4
+
+
+ClassificationImages
+
+"ClassificationId", "ClassificationName"
+1	"BusinessCarDImage"
+2	"userImage"
+3	"RatingImage"
+4	"ToolImage"

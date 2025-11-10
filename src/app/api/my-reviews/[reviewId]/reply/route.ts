@@ -1,19 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { upsertReviewReply } from '@/features/reviews/infrastructure/review.repository';
-
-// Placeholder for getting the authenticated user's ID.
-async function getAuthenticatedResponderId(): Promise<string | null> {
-  // TODO: Implement actual authentication logic.
-  return "420430c2-0338-4612-aa74-65f0a82900fe"; // Example ownerId from db.txt
-}
+import { getUserIdFromToken } from '@/features/users/application/get-user-id-from-token.service';
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { reviewId: string } }
 ) {
   try {
     console.log('[API REPLY] - Received request');
-    const responderId = await getAuthenticatedResponderId();
+    
+    // ✅ Récupération dynamique de l'utilisateur authentifié
+    const responderId = getUserIdFromToken(request);
 
     if (!responderId) {
       console.error('[API REPLY] - Unauthorized: No responderId found.');

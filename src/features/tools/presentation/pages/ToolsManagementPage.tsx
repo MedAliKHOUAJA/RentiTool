@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import BgGlassmorphism from "@/components/BgGlassmorphism";
 import BackgroundSection from "@/components/BackgroundSection";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -11,25 +11,20 @@ import { ToolsList } from "../components/ToolsList";
 import { ToolsListControls } from "../components/ToolsListControls";
 import { AddToolForm } from "../components/AddToolForm";
 import { SortKey } from "../../domain/tool.types";
-
 import { useAuth } from "@/hooks/useAuth";
 
 const ToolsManagementPage = () => {
-  const { user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
+
   const [activeTab, setActiveTab] = useState<"mine" | "add" | "reserved">("mine");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
 
-  const {
-    tools,
-    loading: toolsLoading,
-    error: toolsError,
-    refresh: refreshTools,
-  } = useUserTools({
-    sortKey,
-    searchQuery,
-    enabled: activeTab === "mine",
-    ownerId: user?.userId,
+  // ✅ Log pour debug
+  console.log('📄 [ToolsManagementPage] Render:', { 
+    userLoading, 
+    hasUser: !!user,
+    userId: user?.userId 
   });
 
   // Delete confirmation state
@@ -44,6 +39,21 @@ const ToolsManagementPage = () => {
     nextActive: boolean;
   } | null>(null);
   const [toggleLoading, setToggleLoading] = useState(false);
+
+  // ✅ N'appeler useUserTools que si l'utilisateur est chargé
+  const shouldFetchTools = !userLoading && !!user?.userId && activeTab === "mine";
+
+  const {
+    tools,
+    loading: toolsLoading,
+    error: toolsError,
+    refresh: refreshTools,
+  } = useUserTools({
+    sortKey,
+    searchQuery,
+    enabled: shouldFetchTools,
+    ownerId: user?.userId || '',
+  });
 
   const handleDeleteClick = (toolId: number) => {
     setPendingDeleteId(toolId);
@@ -99,6 +109,38 @@ const ToolsManagementPage = () => {
     await refreshTools();
   };
 
+  // ✅ Pendant le chargement de l'utilisateur
+  if (userLoading) {
+    return (
+      <div className="nc-ToolsManagementPage container my-10">
+        <div className="py-20 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-neutral-500">Chargement de votre profil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Si pas d'utilisateur après le chargement
+  if (!user) {
+    return (
+      <div className="nc-ToolsManagementPage container my-10">
+        <div className="py-20 text-center">
+          <div className="text-lg text-red-600 mb-4">
+            ❌ Vous devez être connecté pour accéder à cette page.
+          </div>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+          >
+            Se connecter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Utilisateur chargé, afficher le contenu
   return (
     <>
       <div className="nc-ToolsManagementPage container my-10 relative">
@@ -109,7 +151,7 @@ const ToolsManagementPage = () => {
             Tools management
           </h1>
           <p className="relative z-10 text-neutral-500 dark:text-neutral-400 mt-2">
-            Manage your tools, add new ones, and check reservations.
+            Bienvenue {user.firstName} ! Gérez vos outils ici.
           </p>
 
           {/* Tabs */}

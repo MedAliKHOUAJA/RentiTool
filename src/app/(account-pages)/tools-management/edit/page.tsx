@@ -6,6 +6,8 @@ import BgGlassmorphism from "@/components/BgGlassmorphism";
 import SimilarityCircle from "@/components/SimilarityCircle";
 import { useSearchParams, useRouter } from "next/navigation";
 import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { ImageDto } from "@/features/tools/domain/image"; 
+
 
 const EditToolPageContent = () => {
   const router = useRouter();
@@ -39,9 +41,7 @@ const EditToolPageContent = () => {
     Array<{ value: any; label: string }>
   >([]);
 
-  // Images state
-  type ImageItem = { id: string | number; url: string; isPrimary: boolean };
-  const [images, setImages] = useState<ImageItem[]>([]);
+  const [images, setImages] = useState<ImageDto[]>([]);
   const [imgError, setImgError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   // Live precheck state (Edit)
@@ -326,22 +326,30 @@ const EditToolPageContent = () => {
 
   const handleSetPrimary = async (imageId: string | number) => {
     if (!id) return;
+    console.log('⭐ [EditTool] handleSetPrimary appelé avec imageId:', imageId, 'type:', typeof imageId);
+    
+    if (!imageId) {
+      console.error('❌ [EditTool] imageId est undefined!');
+      setImgError('Invalid image ID');
+      return;
+    }
+    
     try {
       setImgError(null);
-      const res = await fetch(
-        `/api/tools/${encodeURIComponent(id)}/images/${encodeURIComponent(
-          String(imageId)
-        )}`,
-        { method: "PUT" }
-      );
+      const url = `/api/tools/${encodeURIComponent(id)}/images/${encodeURIComponent(String(imageId))}`;
+      console.log('📡 [EditTool] PUT URL:', url);
+      
+      const res = await fetch(url, { method: "PUT" });
       if (res.status !== 204) {
         if (!res.ok) throw new Error(await res.text());
       }
       // Refresh
+      console.log('✅ [EditTool] Mise à jour réussie, rechargement...');
       const list = await fetch(`/api/tools/${encodeURIComponent(id)}/images`);
       const json = await list.json();
       setImages(Array.isArray(json.images) ? json.images : []);
     } catch (e: any) {
+      console.error('❌ [EditTool] Erreur setPrimary:', e);
       setImgError(e?.message || "Failed to set primary image");
     }
   };
@@ -562,7 +570,7 @@ const EditToolPageContent = () => {
                   </label>
                 </li>
                 {images.map((img) => (
-                  <li key={String(img.id)} className="relative group">
+                  <li key={String(img.imageId)} className="relative group">
                     <img
                       src={img.url}
                       alt="tool"
@@ -576,14 +584,14 @@ const EditToolPageContent = () => {
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 rounded-lg">
                       <button
                         type="button"
-                        onClick={() => handleSetPrimary(img.id)}
+                        onClick={() => handleSetPrimary(img.imageId)}
                         className="px-3 py-1.5 text-xs rounded-full bg-white text-neutral-900 hover:opacity-90"
                       >
                         Set primary
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteImage(img.id)}
+                        onClick={() => handleDeleteImage(img.imageId)}
                         className="px-3 py-1.5 text-xs rounded-full bg-red-600 text-white hover:opacity-90"
                       >
                         Delete

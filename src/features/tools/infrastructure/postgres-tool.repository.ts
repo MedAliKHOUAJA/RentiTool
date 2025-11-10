@@ -4,10 +4,164 @@ import { db } from "@/app/lib/postgres";
 import { User } from "@/features/users/domain/user";
 import { Review, getMainRating, mapDbSentimentToUI } from "@/features/reviews/types";
 import { ToolDetails } from "@/features/tools/domain/tool-details";
-import { ClassificationId, Image } from "@/features/tools/domain/image";
+import { ClassificationId, Image, ImageDto } from "@/features/tools/domain/image";
 import { ToolFilters, ToolFormData } from "../domain/tool.types";
+import { query } from "@/db";
 
 export class PostgresToolRepository implements ToolRepository {
+/**
+ * Récupère toutes les images d'un outil
+ */
+async findImagesByToolId(toolId: string): Promise<ImageDto[]> {
+  const result = await query(
+    `SELECT 
+      "ImageId",
+      "IsPrimaryToolImage",
+      "ClassificationId"
+     FROM "Images"
+     WHERE "ToolId" = $1
+     ORDER BY "IsPrimaryToolImage" DESC, "ImageId" ASC`,
+    [toolId]
+  );
+
+  return result.rows.map((row: any) => ({
+    imageId: row.ImageId,
+    url: `/api/images/${row.ImageId}`,
+    isPrimary: row.IsPrimaryToolImage || false,
+  }));
+}
+
+/**
+ * Récupère le buffer binaire d'une image par son ID
+ */
+async findImageBinaryById(imageId: string): Promise<Buffer | null> {
+  const result = await query(
+    `SELECT "ImageBinary" 
+     FROM "Images"
+     WHERE "ImageId" = $1`,
+    [imageId]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0].ImageBinary;
+}
+
+/**
+ * Crée une nouvelle image pour un outil
+ */
+async createImage(toolId: string, userId: string, imageBinary: Buffer): Promise<ImageDto> {
+  // Vérifier si c'est la première image (sera primaire)
+  const countResult = await query(
+    `SELECT COUNT(*) as count
+     FROM "Images"
+     WHERE "ToolId" = $1`,
+    [toolId]
+  );
+  
+  const isPrimary = parseInt(countResult.rows[0].count) === 0;
+
+  // Insérer l'image
+  const result = await query(
+    `INSERT INTO "Images" 
+      ("ImageBinary", "IsPrimaryToolImage", "ClassificationId", "ToolId", "UserId")
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING "ImageId", "IsPrimaryToolImage"`,
+    [imageBinary, isPrimary, 4, toolId, userId]
+  );
+
+  const newImage = result.rows[0];
+
+  return {
+    imageId: newImage.ImageId,
+    url: `/api/images/${newImage.ImageId}`,
+    isPrimary: newImage.IsPrimaryToolImage,
+  };
+}
+
+/**
+ * Supprime une image d'un outil
+ */
+async deleteImage(imageId: string, toolId: string): Promise<void> {
+  // Vérifier si l'image était primaire
+  const checkResult = await query(
+    `SELECT "IsPrimaryToolImage"
+     FROM "Images"
+     WHERE "ImageId" = $1 AND "ToolId" = $2`,
+    [imageId, toolId]
+  );
+
+  if (checkResult.rows.length === 0) {
+    throw new Error('Image not found');
+  }
+
+  const wasPrimary = checkResult.rows[0].IsPrimaryToolImage;
+
+  // Supprimer l'image
+  await query(
+    `DELETE FROM "Images" 
+     WHERE "ImageId" = $1`,
+    [imageId]
+  );
+
+  // Si c'était l'image primaire, définir une autre image comme primaire
+  if (wasPrimary) {
+    await query(
+      `UPDATE "Images"
+       SET "IsPrimaryToolImage" = true
+       WHERE "ImageId" = (
+         SELECT "ImageId" 
+         FROM "Images"
+         WHERE "ToolId" = $1
+         ORDER BY "ImageId" ASC
+         LIMIT 1
+       )`,
+      [toolId]
+    );
+  }
+}
+
+/**
+ * Définit une image comme primaire pour un outil
+ */
+async setPrimaryImage(imageId: string, toolId: string): Promise<void> {
+  // Retirer le flag primary de toutes les images de l'outil
+  await query(
+    `UPDATE "Images"
+     SET "IsPrimaryToolImage" = false
+     WHERE "ToolId" = $1`,
+    [toolId]
+  );
+
+  // Définir la nouvelle image comme primaire
+  const result = await query(
+    `UPDATE "Images"
+     SET "IsPrimaryToolImage" = true
+     WHERE "ImageId" = $1 AND "ToolId" = $2
+     RETURNING "ImageId"`,
+    [imageId, toolId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error('Image not found');
+  }
+}
+
+/**
+ * Vérifie si une image appartient à un outil
+ */
+async verifyImageOwnership(imageId: string, toolId: string): Promise<boolean> {
+  const result = await query(
+    `SELECT "ImageId" 
+     FROM "Images" 
+     WHERE "ImageId" = $1 AND "ToolId" = $2`,
+    [imageId, toolId]
+  );
+
+  return result.rows.length > 0;
+}
   
   /**
    * Trouve tous les outils avec filtres optionnels
@@ -305,31 +459,6 @@ export class PostgresToolRepository implements ToolRepository {
     }
   }
 
-  /**
-   * Définit une image comme primaire
-   */
-  async setPrimaryImage(toolId: string, imageId: string): Promise<void> {
-    // Désactiver toutes les images primaires pour cet outil
-    const resetQuery = `
-      UPDATE "public"."Images"
-      SET "IsPrimaryToolImage" = false
-      WHERE "ToolId" = $1 AND "ClassificationId" = 4
-    `;
-    await db.query(resetQuery, [toolId]);
-
-    // Définir la nouvelle image primaire
-    const setPrimaryQuery = `
-      UPDATE "public"."Images"
-      SET "IsPrimaryToolImage" = true
-      WHERE "ImageId" = $1 AND "ToolId" = $2 AND "ClassificationId" = 4
-      RETURNING "ImageId"
-    `;
-    const result = await db.query(setPrimaryQuery, [imageId, toolId]);
-
-    if (result.rows.length === 0) {
-      throw new Error("Image not found");
-    }
-  }
 
   /**
    * Trouve tous les outils (avec limite optionnelle)

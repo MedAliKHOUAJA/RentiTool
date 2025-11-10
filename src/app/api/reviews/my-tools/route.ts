@@ -1,19 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getReviewsByOwnerId } from '@/features/reviews/infrastructure/review.repository';
 import { Review, calculateReviewStatistics, mapDbSentimentToUI } from '@/features/reviews/types';
+import { getUserIdFromToken } from '@/features/users/application/get-user-id-from-token.service';
 
-// This is a placeholder for getting the authenticated user's ID.
-// In a real application, you would get this from your authentication system (e.g., NextAuth.js session).
-async function getAuthenticatedOwnerId(): Promise<string | null> {
-  // TODO: Implement actual authentication logic to get the current user's ID.
-  // For now, returning a hardcoded ID or null.
-  // You might use `getServerSession` from 'next-auth' or similar.
-  return "420430c2-0338-4612-aa74-65f0a82900fe"; // Example ownerId from db.txt
-}
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const ownerId = await getAuthenticatedOwnerId();
+    // ✅ Récupération dynamique de l'utilisateur authentifié
+    const ownerId = getUserIdFromToken(request);
 
     if (!ownerId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

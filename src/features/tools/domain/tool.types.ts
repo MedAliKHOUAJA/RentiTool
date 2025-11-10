@@ -38,11 +38,6 @@ export interface ToolFormData {
   isActive: boolean;
 }
 
-export interface ImageItem {
-  id: string | number;
-  url: string;
-  isPrimary: boolean;
-}
 
 export interface ToolMetadata {
   foreignKeys: Record<string, {

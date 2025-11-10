@@ -1,16 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getReviewsForOwner } from '@/features/reviews/infrastructure/review.repository';
 import { Review, calculateReviewStatistics, mapDbSentimentToUI } from '@/features/reviews/types';
+import { getUserIdFromToken } from '@/features/users/application/get-user-id-from-token.service';
 
-// This is a placeholder for getting the authenticated user's ID.
-async function getAuthenticatedOwnerId(): Promise<string | null> {
-  // TODO: Implement actual authentication logic.
-  return "420430c2-0338-4612-aa74-65f0a82900fe"; // Example ownerId from db.txt
-}
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const ownerId = await getAuthenticatedOwnerId();
+    // ✅ Récupération dynamique de l'utilisateur authentifié
+    const ownerId = getUserIdFromToken(request);
 
     if (!ownerId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -23,8 +21,6 @@ export async function GET() {
       sentiment: mapDbSentimentToUI(review),
     }));
 
-    // Note: Statistics for owner reviews might be calculated separately if needed
-    // For now, just returning the reviews.
     return NextResponse.json({ reviews: processedReviews });
   } catch (error) {
     console.error('Error fetching reviews about owner:', error);

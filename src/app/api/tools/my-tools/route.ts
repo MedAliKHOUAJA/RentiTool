@@ -1,28 +1,41 @@
-// src/app/api/tools/my-tools/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromToken } from '@/features/users/application/get-user-id-from-token.service';
 import { PostgresToolRepository } from '@/features/tools/infrastructure/postgres-tool.repository';
-import { GetToolsByOwnerUseCase } from '@/features/tools/application/get-tools-by-owner.use-case';
+import { GetMyToolsUseCase } from '@/features/tools/application/use-cases/get-my-tools.use-case';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔐 [API] GET /api/tools/my-tools');
+
     const userId = getUserIdFromToken(request);
 
     if (!userId) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+      console.error('❌ [API] Unauthorized');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('✅ [API] User authentifié:', userId);
+
+    // Use case
     const toolRepository = new PostgresToolRepository();
-    const getToolsByOwnerUseCase = new GetToolsByOwnerUseCase(toolRepository);
+    const getMyToolsUseCase = new GetMyToolsUseCase(toolRepository);
 
-    const tools = await getToolsByOwnerUseCase.execute(userId);
+    const tools = await getMyToolsUseCase.execute(userId);
 
-    return NextResponse.json({ success: true, tools });
+    console.log('✅ [API] Tools trouvés:', tools.length);
 
-  } catch (error) {
-    console.error('💥 Erreur API /tools/my-tools:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      tools,
+    });
+
+  } catch (error: any) {
+    console.error('❌ [API] Error fetching user tools:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch tools' },
+      { status: 500 }
+    );
   }
 }
