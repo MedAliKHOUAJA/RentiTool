@@ -42,7 +42,7 @@
     "sass": "^1.62.1",
     "server-only": "^0.0.1",
     "sqlite3": "^5.1.7",
-    "typescript": "5.0.4",
+    "typescript": "5.0.4"
   },
   "devDependencies": {
     "@types/pg": "^8.15.5",

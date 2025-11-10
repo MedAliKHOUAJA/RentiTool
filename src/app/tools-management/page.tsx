@@ -565,8 +565,133 @@ const ToolsManagementPage = () => {
 
       {activeTab === 'reserved' && (
         <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Reserved tools</h2>
-          <div className="py-6 text-neutral-500">You don't have any reservations yet.</div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Reserved tools</h2>
+            {/* Filter buttons */}
+            <div className="flex gap-2">
+              {(['all', 'pending', 'confirmed', 'completed', 'cancelled'] as const).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setRentalFilter(status)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    rentalFilter === status
+                      ? 'bg-bleu-nuit text-white'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {rentalsLoading && <div className="py-6 text-neutral-500">Loading rentals...</div>}
+          {rentalsError && <div className="py-6 text-red-600">{rentalsError}</div>}
+          
+          {!rentalsLoading && !rentalsError && rentals.length === 0 && (
+            <div className="py-6 text-neutral-500">You don't have any reservations yet.</div>
+          )}
+          
+          {!rentalsLoading && !rentalsError && rentals.length > 0 && (
+            <div className="grid gap-6">
+              {rentals.map((rental) => (
+                <div key={rental.rentalId} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                    {/* Tool Image placeholder */}
+                    <div className="flex-shrink-0">
+                      <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-lg overflow-hidden flex items-center justify-center">
+                        <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                          {rental.toolId}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(rental.statusId)}`}>
+                          {getStatusText(rental.statusId)}
+                        </span>
+                        <span className="text-sm text-neutral-500">Rental #{rental.rentalId}</span>
+                      </div>
+                      
+                      {/* Tool Name */}
+                      <div className="mb-3">
+                        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                          {rental.toolName || `Tool #${rental.toolId}`}
+                        </h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-neutral-500">Tool ID:</span>
+                          <span className="ml-2 font-medium">{rental.toolId}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-500">Total Price:</span>
+                          <span className="ml-2 font-medium text-green-600">{formatPrice(rental.totalPrice)}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-500">Start Date:</span>
+                          <span className="ml-2 font-medium">{formatDate(rental.rentalDateStart)}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-500">End Date:</span>
+                          <span className="ml-2 font-medium">{formatDate(rental.rentalDateEnd)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2 lg:ml-auto lg:flex-shrink-0">
+                      <Link 
+                        href={`/listing-tool-detail?id=${rental.toolId}` as any}
+                        className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 text-center"
+                      >
+                        View Tool
+                      </Link>
+                      
+                      {/* Action buttons based on status */}
+                      {rental.statusId === 1 && (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => acceptRental(rental.rentalId)}
+                            className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+                          >
+                            Accept
+                          </button>
+                          <button 
+                            onClick={() => rejectRental(rental.rentalId)}
+                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                      
+                      {rental.statusId === 2 && (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => updateRentalStatus(rental.rentalId, 4)}
+                            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                          >
+                            Start
+                          </button>
+                        </div>
+                      )}
+                      
+                      {rental.statusId === 4 && (
+                        <button 
+                          onClick={() => updateRentalStatus(rental.rentalId, 5)}
+                          className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200"
+                        >
+                          Complete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
