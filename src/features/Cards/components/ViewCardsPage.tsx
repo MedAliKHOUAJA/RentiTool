@@ -3,17 +3,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCardsByUserId, deleteCard, getSavedCardsByUserId } from '@/features/Cards/actions/Cards';
+import { getCardsByUserId, deleteCard, getSavedCardsByUserId, getCurrentUser } from '@/features/Cards/actions/Cards';
 import { Card } from '@/features/Cards/types';
 import toast from 'react-hot-toast';
 import { Edit2, Trash2, Eye, Plus } from 'lucide-react';
-
-const CURRENT_USER_ID = 'a1b2c3d4-5678-90ab-cdef-123456789abc'; // wait user auth aicha
 
 const ViewCardsPage = () => {
   const router = useRouter();
   const [cards, setCards] = useState<Card[]>([]);
   const [ownCardIds, setOwnCardIds] = useState<Set<number>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // ✅ Track current user
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingCardId, setDeletingCardId] = useState<number | null>(null);
@@ -21,16 +20,25 @@ const ViewCardsPage = () => {
   useEffect(() => {
     const fetchCards = async () => {
       try {
+        // ✅ Get current user first
+        const user = await getCurrentUser();
+        if (!user) {
+          router.push('/login');
+          return;
+        }
+        setCurrentUserId(user.userId);
+
+        // ✅ Fetch cards without passing userId (uses JWT internally)
         const [ownCards, savedCards] = await Promise.all([
-          getCardsByUserId(CURRENT_USER_ID),
-          getSavedCardsByUserId(CURRENT_USER_ID),
+          getCardsByUserId(), // ✅ No argument - uses current user from JWT
+          getSavedCardsByUserId(), // ✅ No argument - uses current user from JWT
         ]);
         
-        // cartaa taa chkoun ? 
+        // Track which cards belong to current user
         const ownIds = new Set((ownCards || []).map(card => card.CardId));
         setOwnCardIds(ownIds);
         
-        // Merge own/saved cards no dups by CardId
+        // Merge own/saved cards, remove duplicates by CardId
         const allCards = [...(ownCards || []), ...(savedCards || [])].reduce((acc, card) => {
           if (!acc.find((c: { CardId: any; }) => c.CardId === card.CardId)) acc.push(card);
           return acc;
@@ -40,20 +48,29 @@ const ViewCardsPage = () => {
         allCards.sort((a: { CardId: number; }, b: { CardId: number; }) => b.CardId - a.CardId);
         
         setCards(allCards);
+        console.log('✅ Current user:', user.userId);
         console.log('✅ Total cards fetched:', allCards.length);
         console.log('✅ Own cards count:', ownCards?.length || 0);
         console.log('✅ Saved cards count:', savedCards?.length || 0);
         console.log('✅ Own card IDs:', Array.from(ownIds));
-        console.log('✅ Sample card UserId:', allCards[0]?.UserId);
       } catch (err) {
         console.error('Error fetching cards:', err);
+        
+        // ✅ Check if it's an auth error
+        if (err instanceof Error && err.message.includes('Unauthorized')) {
+          toast.error('Session expirée, veuillez vous reconnecter');
+          router.push('/login');
+          return;
+        }
+        
         setError('Erreur lors de la récupération des cartes');
+        toast.error('Erreur lors du chargement des cartes');
       } finally {
         setLoading(false);
       }
     };
     fetchCards();
-  }, []);
+  }, [router]);
 
   const handleDelete = async (cardId: number) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')) return;
@@ -74,6 +91,14 @@ const ViewCardsPage = () => {
       }
     } catch (err) {
       console.error('Delete error:', err);
+      
+      // ✅ Check for auth errors
+      if (err instanceof Error && err.message.includes('Unauthorized')) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        router.push('/login');
+        return;
+      }
+      
       toast.error('Erreur lors de la suppression de la carte');
     } finally {
       setDeletingCardId(null);
@@ -112,7 +137,13 @@ const ViewCardsPage = () => {
     return (
       <div className="container mx-auto py-10 px-4">
         <div className="text-center">
-          <p className="text-red-600 text-xl">{error}</p>
+          <p className="text-red-600 text-xl mb-4">{error}</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+          >
+            Se connecter
+          </button>
         </div>
       </div>
     );
@@ -196,7 +227,7 @@ const ViewCardsPage = () => {
                         <img
                           src={`data:image/jpeg;base64,${card.CompanyLogoUrl}`}
                           alt="Logo"
-                          className="w-12 h-12 bg-white rounded-lg p-1"
+                          className="w-12 h-12 bg-white rounded-lg p-1 object-contain"
                         />
                       ) : (
                         <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">

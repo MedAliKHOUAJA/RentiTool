@@ -46,8 +46,8 @@ export default function LoginPage() {
         console.log('✅ Connexion réussie! Redirection vers /profile');
         console.log('👤 Utilisateur connecté:', data.user);
         
-        // IMPORTANT: Utiliser window.location.href pour une redirection garantie
-        window.location.href = '/profile';
+        // router.push*****noIMPORTANT: Utiliser window.location.href pour une redirection garantie
+        router.push('/');
         
       } else {
         console.log('❌ Erreur connexion:', data.error);

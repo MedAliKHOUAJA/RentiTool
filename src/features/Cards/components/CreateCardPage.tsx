@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createCardSchema, CreateCardFormData } from '@/features/Cards/schemas/Cards';
-import { createCard, getUserById } from '@/features/Cards/actions/Cards';
-
+import { createCard, getCurrentUser } from '@/features/Cards/actions/Cards'; // ✅ Import getCurrentUser
 import toast from 'react-hot-toast';
 
 interface User {
@@ -58,31 +57,11 @@ const CreateCardPage = () => {
   const profilePicture = watch('profilePicture');
   const companyLogo = watch('companyLogo');
 
-  //  preview URLs
-  useEffect(() => {
-    if (profilePicture instanceof File) {
-      const url = URL.createObjectURL(profilePicture);
-      setProfilePreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setProfilePreview(null);
-    }
-  }, [profilePicture]);
-
-  useEffect(() => {
-    if (companyLogo instanceof File) {
-      const url = URL.createObjectURL(companyLogo);
-      setLogoPreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setLogoPreview(null);
-    }
-  }, [companyLogo]);
-
+// ✅ FIXED: Get dynamic user instead of hardcoded ID
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const data = await getUserById('a1b2c3d4-5678-90ab-cdef-123456789abc');//badl ki ji users
+        const data = await getCurrentUser(); // ✅ Get logged-in user dynamically
         if (data) {
           setUser(data);
         } else {
@@ -91,12 +70,16 @@ const CreateCardPage = () => {
       } catch (err) {
         console.error('Fetch user error:', err);
         setError('Erreur lors de la récupération des données utilisateur');
+        // Redirect to login if unauthorized
+        if (err instanceof Error && err.message.includes('Unauthorized')) {
+          router.push('/login');
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchUser();
-  }, []);
+  }, [router]);
 
   const onSubmit = async (data: CreateCardFormData) => {
     console.log('onSubmit triggered with data:', data);

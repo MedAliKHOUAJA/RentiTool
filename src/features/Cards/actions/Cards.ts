@@ -3,10 +3,40 @@
 
 import { createCardSchema, CreateCardFormData } from '@/features/Cards/schemas/Cards';
 import { db } from '@/app/api/cards/db';
+import { getCurrentUserId } from '@/lib/auth-jwt-server'; // ✅ Import auth function
 import { z } from 'zod';
 
+// ✅ NEW: Get current logged-in user
+export async function getCurrentUser() {
+  try {
+    const userId = await getCurrentUserId();
+    
+    const result = await db.query(
+      `SELECT 
+         u."userId", u."FirstName", u."LastName", u."Email", u."Phone",
+         l."Governorate", l."Delegation", l."Postalcode"
+       FROM public."User" u
+       LEFT JOIN public."Locations" l ON u."LocationId" = l."LocationId"
+       WHERE u."userId" = $1`,
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      throw new Error('User not found');
+    }
+    
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    throw error;
+  }
+}
+
+// ✅ UPDATED: Use dynamic user ID from JWT
 export async function createCard(formData: FormData) {
   try {
+    // ✅ Get userId from JWT token instead of formData
+    const userId = await getCurrentUserId();
 
     const formDataObj = Object.fromEntries(formData);
     console.log('Received formData:', formDataObj);
@@ -21,8 +51,6 @@ export async function createCard(formData: FormData) {
       companyLogo: formData.get('companyLogo') as File | null,
     });
 
-    const userId = formData.get('userId') as string;
-
     const cardResult = await db.query(
       `INSERT INTO public."BusinessCards" (
         "UserId", "JobTitle", "CompanyName", "WebSite", "CreatedAt", "UpdatedAt", 
@@ -30,7 +58,7 @@ export async function createCard(formData: FormData) {
       ) VALUES ($1, $2, $3, $4, NOW(), NOW(), $5, $6)
       RETURNING "CardId"`,
       [
-        userId,
+        userId, // ✅ Use dynamic userId
         data.jobTitle,
         data.companyName,
         data.webSite || null,
@@ -40,11 +68,10 @@ export async function createCard(formData: FormData) {
     );
 
     if (cardResult.rowCount !== 1) {
-      return { success: false, error: 'Échec de l’insertion dans la base de données' };
+      return { success: false, error: 'Échec de linsertion dans la base de données' };
     }
 
     const cardId = cardResult.rows[0].CardId;
-
 
     if (data.profilePicture) {
       const buffer = Buffer.from(await data.profilePicture.arrayBuffer());
@@ -77,9 +104,27 @@ export async function createCard(formData: FormData) {
   }
 }
 
-
+// ✅ UPDATED: Verify ownership before updating
 export async function updateCard(cardId: number, formData: FormData) {
   try {
+    const currentUserId = await getCurrentUserId();
+
+    // ✅ Verify user owns this card
+    const ownerCheck = await db.query(
+      `SELECT "UserId" FROM public."BusinessCards" WHERE "CardId" = $1`,
+      [cardId]
+    );
+
+    if (ownerCheck.rowCount === 0) {
+      return { success: false, error: 'Carte non trouvée' };
+    }
+
+    const cardOwnerId = ownerCheck.rows[0].UserId;
+    
+    if (cardOwnerId !== currentUserId) {
+      return { success: false, error: 'Non autorisé à modifier cette carte' };
+    }
+
     const data = createCardSchema.parse({
       jobTitle: formData.get('jobTitle') as string,
       companyName: formData.get('companyName') as string,
@@ -87,12 +132,6 @@ export async function updateCard(cardId: number, formData: FormData) {
       profilePicture: formData.get('profilePicture') as File | null,
       companyLogo: formData.get('companyLogo') as File | null,
     });
-
-    const userId = (await db.query(
-      `SELECT "UserId" FROM public."BusinessCards" WHERE "CardId" = $1`,
-      [cardId]
-    )).rows[0].UserId;
-
 
     const cardResult = await db.query(
       `UPDATE public."BusinessCards"
@@ -112,7 +151,6 @@ export async function updateCard(cardId: number, formData: FormData) {
       return { success: false, error: 'Carte non trouvée ou échec de la mise à jour' };
     }
 
-
     if (data.profilePicture) {
       const buffer = Buffer.from(await data.profilePicture.arrayBuffer());
       await db.query(
@@ -123,7 +161,7 @@ export async function updateCard(cardId: number, formData: FormData) {
         `INSERT INTO public."Images" (
           "ImageBinary", "UserId", "BusinessCardId", "ClassificationId", "ImageType"
         ) VALUES ($1, $2, $3, $4, $5)`,
-        [buffer, userId, cardId, 1, 'ProfilePicture']
+        [buffer, currentUserId, cardId, 1, 'ProfilePicture']
       );
     }
 
@@ -137,7 +175,7 @@ export async function updateCard(cardId: number, formData: FormData) {
         `INSERT INTO public."Images" (
           "ImageBinary", "UserId", "BusinessCardId", "ClassificationId", "ImageType"
         ) VALUES ($1, $2, $3, $4, $5)`,
-        [buffer, userId, cardId, 1, 'CompanyLogo']
+        [buffer, currentUserId, cardId, 1, 'CompanyLogo']
       );
     }
 
@@ -152,9 +190,25 @@ export async function updateCard(cardId: number, formData: FormData) {
   }
 }
 
+// ✅ UPDATED: Verify ownership before deleting
 export async function deleteCard(cardId: number) {
   try {
-   
+    const currentUserId = await getCurrentUserId();
+
+    // ✅ Verify user owns this card
+    const ownerCheck = await db.query(
+      `SELECT "UserId" FROM public."BusinessCards" WHERE "CardId" = $1`,
+      [cardId]
+    );
+
+    if (ownerCheck.rowCount === 0) {
+      return { success: false, error: 'Carte non trouvée' };
+    }
+
+    if (ownerCheck.rows[0].UserId !== currentUserId) {
+      return { success: false, error: 'Non autorisé à supprimer cette carte' };
+    }
+
     await db.query(
       `DELETE FROM public."Images" WHERE "BusinessCardId" = $1`,
       [cardId]
@@ -195,8 +249,12 @@ export async function getUserById(userId: string) {
   }
 }
 
-export async function getCardsByUserId(userId: string) {
+// ✅ UPDATED: Get cards for current user
+export async function getCardsByUserId(userId?: string) {
   try {
+    // ✅ If no userId provided, get current user
+    const targetUserId = userId || await getCurrentUserId();
+    
     const result = await db.query(
       `SELECT 
          bc."CardId", bc."JobTitle", bc."CompanyName", bc."WebSite", bc."QrCodeUrl", bc."SocialLinks",
@@ -210,7 +268,7 @@ export async function getCardsByUserId(userId: string) {
        JOIN public."User" u ON bc."UserId" = u."userId"
        LEFT JOIN public."Locations" l ON u."LocationId" = l."LocationId"
        WHERE bc."UserId" = $1`,
-      [userId]
+      [targetUserId]
     );
     return result.rows;
   } catch (error) {
@@ -243,14 +301,13 @@ export async function getCardById(cardId: number) {
   }
 }
 
-
+// ✅ UPDATED: Save card for current user
 export async function saveSharedCard(cardId: number, notes?: string) {
   try {
-    const userId = 'a1b2c3d4-5678-90ab-cdef-123456789abc'; // badl ki ji user
+    const userId = await getCurrentUserId(); // ✅ Get dynamic user
     const card = await getCardById(cardId);
     if (!card) throw new Error('Carte non trouvée');
 
-    // Insert into SharedCards with def val
     const result = await db.query(
       `INSERT INTO public."SharedCards" ("UserId", "BusinessCardId", "IsFavorite", "IsArchived", "Notes", "ReceivedAt")
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -270,8 +327,11 @@ export async function saveSharedCard(cardId: number, notes?: string) {
   }
 }
 
-export async function getSavedCardsByUserId(userId: string) {
+// ✅ UPDATED: Get saved cards for current user
+export async function getSavedCardsByUserId(userId?: string) {
   try {
+    const targetUserId = userId || await getCurrentUserId(); // ✅ Get dynamic user
+    
     const result = await db.query(
       `SELECT 
          bc.*,
@@ -282,7 +342,7 @@ export async function getSavedCardsByUserId(userId: string) {
        FROM public."BusinessCards" bc
        JOIN public."SharedCards" sc ON bc."CardId" = sc."BusinessCardId"
        WHERE sc."UserId" = $1`,
-      [userId]
+      [targetUserId]
     );
     return result.rows as any[];
   } catch (error) {
