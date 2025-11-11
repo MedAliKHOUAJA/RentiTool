@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@azure/ai-text-analytics": "^5.1.0",
+    "@azure/service-bus": "^7.9.5",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.0.18",
     "@tailwindcss/aspect-ratio": "^0.4.2",

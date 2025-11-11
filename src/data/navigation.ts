@@ -171,7 +171,7 @@ export const NAVIGATION_DEMO: NavItemType[] = [
   },
   {
     id: ncNanoId(),
-    href: "/account/profile",
+    href: "/profile",
     name: "Mon Compte",
     type: "dropdown",
     children: accountChildMenus,

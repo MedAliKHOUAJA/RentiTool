@@ -1,4 +1,4 @@
-import { query } from "@/db";
+import db, { query } from "@/db";
 import { Review } from "../types";
 
 export async function getReviewsByOwnerId(ownerId: string): Promise<Review[]> {
@@ -164,4 +164,68 @@ export async function getReviewsForOwner(ownerId: string): Promise<Review[]> {
       name: `${row.raterfirstname} ${row.raterlastname}`,
     },
   }));
+}
+/**
+ * Récupère les détails d'un review pour envoyer une notification
+ */
+export async function getReviewDetailsForNotification(reviewId: number) {
+  try {
+    console.log(`[REPOSITORY] Fetching review details for reviewId: ${reviewId}`);
+
+    const res = await query(
+      `
+      SELECT 
+        r."RatingId" as rating_id,
+        r."RaterId" as reviewer_user_id,
+        r."Comment" as original_comment,
+        r."Communication" as communication,
+        r."ToolStatus" as tool_status,
+        r."Ponctuality" as ponctuality,
+        r."Fiability" as fiability,
+        r."RatedToolId" as tool_id,
+        t."Title" as tool_name,
+        t."Ownerid" as owner_id,
+        owner."FirstName" as owner_first_name,
+        owner."LastName" as owner_last_name,
+        CONCAT(owner."FirstName", ' ', owner."LastName") as owner_name,
+        reviewer."Email" as reviewer_email,
+        reviewer."FirstName" as reviewer_first_name
+      FROM "Ratings" r
+      INNER JOIN "Tools" t ON r."RatedToolId" = t."Toolid"
+      INNER JOIN "User" owner ON t."Ownerid" = owner."userId"
+      LEFT JOIN "User" reviewer ON r."RaterId" = reviewer."userId"
+      WHERE r."RatingId" = $1 AND r."RatedEntityTypeId" = 1
+      `,
+      [reviewId]
+    );
+
+    if (!res.rows || res.rows.length === 0) {
+      console.error(`[REPOSITORY] Review not found: ${reviewId}`);
+      return null;
+    }
+
+    const row = res.rows[0];
+
+    const details = {
+      reviewId: row.rating_id,
+      reviewerUserId: row.reviewer_user_id,
+      reviewerEmail: row.reviewer_email,
+      reviewerFirstName: row.reviewer_first_name,
+      originalComment: row.original_comment || '',
+      communication: row.communication,
+      toolStatus: row.tool_status,
+      ponctuality: row.ponctuality,
+      fiability: row.fiability,
+      toolId: row.tool_id,
+      toolName: row.tool_name,
+      ownerId: row.owner_id,
+      ownerName: row.owner_name || 'Propriétaire',
+    };
+
+    console.log(`[REPOSITORY] Review details fetched successfully:`, details);
+    return details;
+  } catch (error) {
+    console.error('[REPOSITORY] Error fetching review details for notification:', error);
+    throw error;
+  }
 }
