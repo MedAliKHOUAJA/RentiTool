@@ -2,21 +2,20 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [success, setSuccess] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setSuccess("");
 
     if (!email || !password) {
       setError("Veuillez remplir tous les champs");
@@ -34,8 +33,8 @@ export default function LoginPage() {
         },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          password,
-          remember
+          password: password
+          // SUPPRIMÉ: remember n'est pas utilisé par le backend
         }),
       });
 
@@ -45,9 +44,12 @@ export default function LoginPage() {
       if (response.ok && data.success) {
         console.log('✅ Connexion réussie! Redirection vers /profile');
         console.log('👤 Utilisateur connecté:', data.user);
+        setSuccess('Connexion réussie! Redirection...');
         
-        // IMPORTANT: Utiliser window.location.href pour une redirection garantie
-        window.location.href = '/profile';
+        // Redirection après un court délai
+        setTimeout(() => {
+          window.location.href = '/profile';
+        }, 1000);
         
       } else {
         console.log('❌ Erreur connexion:', data.error);
@@ -63,8 +65,9 @@ export default function LoginPage() {
 
   // Testez avec un utilisateur existant
   const testCredentials = () => {
-    setEmail("test@example.com");
-    setPassword("test123");
+    setEmail("aichamaala@gmail.com");
+    setPassword("hahaha");
+    setError("");
   };
 
   return (
@@ -101,13 +104,13 @@ export default function LoginPage() {
               Connectez-vous pour accéder à votre profil personnel.
             </p>
             
-            {/* Bouton de test (optionnel - à retirer en production) */}
+            {/* Bouton de test */}
             <button 
               onClick={testCredentials}
               className="mt-4 text-xs text-blue-600 hover:underline"
               type="button"
             >
-              Remplir avec des identifiants de test
+              Remplir avec mes identifiants de test
             </button>
           </div>
         </div>
@@ -123,6 +126,12 @@ export default function LoginPage() {
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                {success}
               </div>
             )}
 
@@ -143,7 +152,7 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
                     className="pl-10 pr-3 py-2 w-full rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent bg-white disabled:bg-gray-50"
-                    placeholder="exemple@email.com"
+                    placeholder="aichamaala@gmail.com"
                   />
                 </div>
               </label>
@@ -192,16 +201,6 @@ export default function LoginPage() {
               </label>
 
               <div className="flex items-center justify-between text-sm">
-                <label className="inline-flex items-center gap-2 text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={() => setRemember((r) => !r)}
-                    disabled={isLoading}
-                    className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                  />
-                  Se souvenir de moi
-                </label>
                 <a href="/forgot-password" className="text-sky-600 hover:underline">
                   Mot de passe oublié ?
                 </a>

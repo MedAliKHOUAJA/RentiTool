@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  // typedRoutes has moved out of experimental in Next 13.4+ / 15
+  typedRoutes: true,
   experimental: {
-    appDir: true,
-    typedRoutes: true,
+    // Remove appDir: the App Router is enabled by default
   },
   images: {
     remotePatterns: [

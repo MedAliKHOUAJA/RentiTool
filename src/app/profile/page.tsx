@@ -30,19 +30,24 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Fonction pour uploader l'image vers le serveur
-  const uploadProfileImage = async (base64Image: string) => {
+  // Édition de la localisation
+  const [isLocationEditing, setIsLocationEditing] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationResults, setLocationResults] = useState<Array<{ LocationId: number; Governorate: string; Delegation: string; Postalcode: string }>>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationSaveLoading, setLocationSaveLoading] = useState(false);
+
+  // Fonction pour uploader l'image vers le serveur (FormData)
+  const uploadProfileImage = async (file: File) => {
     try {
       console.log('🔄 Envoi de l\'image au serveur...');
       
+      const formData = new FormData();
+      formData.append('image', file);
+
       const response = await fetch('/api/profile/image', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Image
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -77,32 +82,21 @@ export default function ProfilePage() {
     setIsUploading(true);
 
     try {
+      // Prévisualisation locale
       const reader = new FileReader();
-      
-      reader.onloadend = async () => {
-        try {
-          const base64String = reader.result as string;
-          setProfileImage(base64String);
-          
-          if (user) {
-            localStorage.setItem(`profileImage_${user.userId}`, base64String);
-            console.log('💾 Image sauvegardée dans le localStorage');
-          }
-          
-          await uploadProfileImage(base64String);
-          console.log('🎉 Photo de profil mise à jour avec succès!');
-          
-        } catch (uploadError) {
-          console.error('❌ Erreur lors de la sauvegarde serveur:', uploadError);
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfileImage(base64String);
+        if (user && typeof window !== 'undefined') {
+          localStorage.setItem(`profileImage_${user.userId}`, base64String);
+          console.log('💾 Image sauvegardée dans le localStorage');
         }
       };
-      
-      reader.onerror = () => {
-        throw new Error('Erreur lors de la lecture du fichier');
-      };
-      
       reader.readAsDataURL(file);
-      
+
+      // Envoi au serveur via FormData
+      await uploadProfileImage(file);
+      console.log('🎉 Photo de profil mise à jour avec succès!');
     } catch (error) {
       console.error('💥 Erreur upload image:', error);
       alert('Erreur lors du téléchargement de l\'image');
@@ -211,6 +205,67 @@ export default function ProfilePage() {
     return parts.length > 0 ? parts.join(' - ') : 'Non renseignée';
   };
 
+  // Recherche des localisations
+  const fetchLocationSuggestions = async (query: string) => {
+    try {
+      setLocationLoading(true);
+      const url = query && query.trim().length > 0 ? `/api/profile/location?query=${encodeURIComponent(query.trim())}` : '/api/profile/location';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la récupération des localisations');
+      const list = Array.isArray(data.locations) ? data.locations : [];
+      setLocationResults(list);
+    } catch (err) {
+      console.error('❌ Erreur récupération localisations:', err);
+      setLocationResults([]);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const startLocationEditing = () => {
+    setIsLocationEditing(true);
+    setLocationQuery('');
+    fetchLocationSuggestions('');
+  };
+
+  const cancelLocationEditing = () => {
+    setIsLocationEditing(false);
+    setLocationQuery('');
+    setLocationResults([]);
+  };
+
+  const saveLocation = async (locationId: number) => {
+    if (!locationId) return;
+    try {
+      setLocationSaveLoading(true);
+      const res = await fetch('/api/profile/location', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur mise à jour localisation');
+      const loc = data.location;
+      // Mettre à jour l'utilisateur localement
+      setUser(prev => prev ? {
+        ...prev,
+        locationId: String(loc.LocationId),
+        governorate: loc.Governorate,
+        delegation: loc.Delegation,
+        postalCode: String(loc.Postalcode)
+      } : prev);
+      setIsLocationEditing(false);
+      console.log('✅ Localisation mise à jour');
+    } catch (err) {
+      console.error('❌ Erreur mise à jour localisation:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Erreur: ${message}`);
+    } finally {
+      setLocationSaveLoading(false);
+    }
+  };
+
   // Composant d'affichage/édition d'un champ
   const renderEditableField = (field: string, label: string, value: string, type: string = 'text') => {
     const isEditing = editingField === field;
@@ -297,10 +352,12 @@ export default function ProfilePage() {
         console.log('✅ Profil chargé:', userData);
         setUser(userData);
         
-        const savedImage = localStorage.getItem(`profileImage_${userData.userId}`);
-        if (savedImage) {
-          setProfileImage(savedImage);
-          console.log('🖼️ Image de profil chargée depuis le localStorage');
+        if (typeof window !== 'undefined') {
+          const savedImage = localStorage.getItem(`profileImage_${userData.userId}`);
+          if (savedImage) {
+            setProfileImage(savedImage);
+            console.log('🖼️ Image de profil chargée depuis le localStorage');
+          }
         }
         
       } catch (error) {
@@ -459,21 +516,67 @@ export default function ProfilePage() {
                 {renderEditableField('email', 'Email', user.email, 'email')}
                 {renderEditableField('phone', 'Téléphone', user.phone || '', 'tel')}
 
-                {/* Localisation (non éditable pour l'instant) */}
+                {/* Localisation (éditable) */}
                 <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100 md:col-span-2">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-indigo-100 rounded-lg">
-                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-indigo-100 rounded-lg">
+                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <label className="text-sm font-medium text-gray-700">Localisation</label>
                     </div>
-                    <label className="text-sm font-medium text-gray-700">Localisation</label>
+                    {!isLocationEditing ? (
+                      <button onClick={startLocationEditing} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Modifier</button>
+                    ) : (
+                      <button onClick={cancelLocationEditing} className="text-red-600 hover:text-red-800 text-sm font-medium">Annuler</button>
+                    )}
                   </div>
-                  <p className="text-lg font-semibold text-gray-900">{getLocationDisplay()}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Pour modifier votre localisation, contactez l'administrateur
-                  </p>
+
+                  {!isLocationEditing ? (
+                    <p className="text-lg font-semibold text-gray-900">{getLocationDisplay()}</p>
+                  ) : (
+                    <div>
+                      <div className="flex gap-3 mb-3">
+                        <input
+                          type="text"
+                          value={locationQuery}
+                          onChange={(e) => {
+                            const q = e.target.value;
+                            setLocationQuery(q);
+                            fetchLocationSuggestions(q);
+                          }}
+                          placeholder="Rechercher (gouvernorat, délégation, code postal)"
+                          className="flex-1 px-4 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div className="max-h-64 overflow-y-auto bg-white rounded-lg border border-indigo-100">
+                        {locationLoading ? (
+                          <div className="p-4 text-sm text-gray-500">Chargement...</div>
+                        ) : locationResults.length === 0 ? (
+                          <div className="p-4 text-sm text-gray-500">Aucun résultat</div>
+                        ) : (
+                          locationResults.map((loc) => (
+                            <div key={loc.LocationId} className="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-indigo-50">
+                              <div>
+                                <div className="text-gray-900 font-medium">{loc.Governorate} - {loc.Delegation}</div>
+                                <div className="text-xs text-gray-500">Code postal: {String(loc.Postalcode)}</div>
+                              </div>
+                              <button
+                                disabled={locationSaveLoading}
+                                onClick={() => saveLocation(loc.LocationId)}
+                                className="text-green-600 hover:text-green-800 text-sm font-medium disabled:opacity-50"
+                              >
+                                {locationSaveLoading ? '...' : 'Choisir'}
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Rôle (non éditable) */}
