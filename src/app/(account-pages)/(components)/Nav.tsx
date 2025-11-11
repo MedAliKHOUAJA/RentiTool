@@ -14,8 +14,8 @@ export const Nav = () => {
     "/account" as Route,
     "/account-password" as Route,
     "/tools-management" as Route,
-    "/reviews" as Route, // This will be for tool reviews
-    "/reviews/about-me" as Route, // New link for owner reviews
+    "/reviews" as Route,
+    "/reviews/about-me" as Route, 
   ];
 
   return (

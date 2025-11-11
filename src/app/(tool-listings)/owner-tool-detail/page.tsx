@@ -14,7 +14,7 @@ import { getImageUrl } from "@/features/images/utils/image-utils";
 
 const OwnerToolDetailPageContent = () => {
   const searchParams = useSearchParams();
-  const toolId = searchParams.get("id");
+  const toolId = searchParams?.get("id") || null;
   const [tool, setTool] = useState<ToolDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

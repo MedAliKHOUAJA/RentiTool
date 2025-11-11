@@ -48,7 +48,7 @@ const DEMO_CATS_2: TaxonomyType[] = [
   },
   {
     id: "5",
-    href: "/listing-stay" as Route,
+    href: "/listing-stay",
     name: "In the billionaire's house",
     taxonomy: "category",
     count: 188288,

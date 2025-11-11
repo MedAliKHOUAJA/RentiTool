@@ -8,4 +8,5 @@ export interface ToolDetails extends Tool {
   ownerReviews: Review[];
   images?: Image[];
   imagePrimary?: Image;
+  
 }
