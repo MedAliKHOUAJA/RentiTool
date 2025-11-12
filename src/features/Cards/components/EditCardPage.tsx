@@ -1,4 +1,3 @@
-// src/features/Cards/components/EditCardPage.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';

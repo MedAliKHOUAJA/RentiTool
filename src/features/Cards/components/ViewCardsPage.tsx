@@ -362,49 +362,49 @@ const ViewCardsPage = () => {
   }
 
   return (
-    <div className="container mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
               Mes Cartes de Visite
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
               Gérez et affichez vos cartes personnelles et sauvegardées
             </p>
           </div>
           <button
             onClick={() => router.push('/account/cards/create')}
-            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-lg flex items-center justify-center space-x-2 w-full sm:w-auto"
+            className="px-4 py-2 sm:px-6 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-lg flex items-center justify-center space-x-2 w-full sm:w-auto text-sm sm:text-base"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Nouvelle Carte</span>
           </button>
         </div>
       </div>
 
       {/* Total Cards */}
-      <div className="mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md border border-gray-200 dark:border-gray-700">
+      <div className="mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-md border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Cartes</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{cards.length}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm font-medium">Total Cartes</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1">{cards.length}</p>
               <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                 {ownCardIds.size} carte(s) personnelle(s) • {cards.length - ownCardIds.size} sauvegardée(s)
               </p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-              <span className="text-2xl">📇</span>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+              <span className="text-xl sm:text-2xl">📇</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Cards Grid */}
+      {/* Cards Horizontal Scroll */}
       {cards.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-4 snap-x snap-mandatory">
           {cards.map((card, index) => {
             const gradient = cardColors[index % cardColors.length];
             const isOwnCard = ownCardIds.has(card.CardId);
@@ -413,7 +413,7 @@ const ViewCardsPage = () => {
             const hasTags = parsedTags.length > 0;
 
             return (
-              <div key={card.CardId} className="group relative">
+              <div key={card.CardId} className="group relative flex-shrink-0 w-[90%] sm:w-80 md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.333rem)] snap-start">
                 {/* Badge: Own card */}
                 {isOwnCard && (
                   <div className="absolute -top-2 -left-2 z-10">
@@ -423,9 +423,9 @@ const ViewCardsPage = () => {
                   </div>
                 )}
 
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700">
-                  {/* Gradient Header */}
-                  <div className={`relative h-48 bg-gradient-to-br ${gradient} p-6 overflow-hidden`}>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 h-full">
+                  {/* Gradient Header - Made height auto with min-h for better mobile stacking */}
+                  <div className={`bg-gradient-to-br ${gradient} p-4 sm:p-6 relative overflow-hidden min-h-[160px] sm:min-h-[192px]`}>
                     <div className="absolute -top-10 -right-10 w-32 h-32 bg-white opacity-10 rounded-full"></div>
                     <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white opacity-10 rounded-full"></div>
 
@@ -435,46 +435,46 @@ const ViewCardsPage = () => {
                         <img
                           src={`data:image/jpeg;base64,${card.CompanyLogoUrl}`}
                           alt="Logo"
-                          className="w-12 h-12 bg-white rounded-lg p-1 object-contain"
+                          className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-lg p-1 object-contain"
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-base sm:text-lg">
                             {card.CompanyName?.charAt(0)}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Profile */}
-                    <div className="relative z-10 flex items-center space-x-3">
-                      {card.ProfilePictureUrl ? (
-                        <img
-                          src={`data:image/jpeg;base64,${card.ProfilePictureUrl}`}
-                          alt="Profile"
-                          className="w-16 h-16 rounded-full border-3 border-white shadow-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full border-3 border-white bg-white bg-opacity-20 flex items-center justify-center shadow-lg">
-                          <span className="text-white text-xl font-bold">
-                            {card.FirstName?.charAt(0)}{card.LastName?.charAt(0)}
-                          </span>
+                    {/* Profile and Company - Flex col to prevent overlap */}
+                    <div className="relative z-10 flex flex-col gap-3 sm:gap-4">
+                      <div className="flex items-center space-x-3">
+                        {card.ProfilePictureUrl ? (
+                          <img
+                            src={`data:image/jpeg;base64,${card.ProfilePictureUrl}`}
+                            alt="Profile"
+                            className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-3 border-white shadow-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-3 border-white bg-white bg-opacity-20 flex items-center justify-center shadow-lg">
+                            <span className="text-white text-lg sm:text-xl font-bold">
+                              {card.FirstName?.charAt(0)}{card.LastName?.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-bold text-base sm:text-lg leading-tight line-clamp-1">
+                            {card.FirstName} {card.LastName}
+                          </h3>
+                          <p className="text-white text-opacity-90 text-xs sm:text-sm line-clamp-1">
+                            {card.JobTitle}
+                          </p>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <h3 className="text-white font-bold text-lg leading-tight">
-                          {card.FirstName} {card.LastName}
-                        </h3>
-                        <p className="text-white text-opacity-90 text-sm">
-                          {card.JobTitle}
-                        </p>
                       </div>
-                    </div>
 
-                    {/* Company Name */}
-                    <div className="absolute bottom-4 left-6 right-6">
+                      {/* Company Name */}
                       <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg px-3 py-2 border border-white border-opacity-30">
-                        <p className="text-white text-sm font-semibold truncate">
+                        <p className="text-white text-xs sm:text-sm font-semibold truncate">
                           {card.CompanyName}
                         </p>
                       </div>
@@ -482,8 +482,8 @@ const ViewCardsPage = () => {
                   </div>
 
                   {/* Info Section */}
-                  <div className="p-6 bg-white dark:bg-gray-800">
-                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="p-4 sm:p-6 bg-white dark:bg-gray-800 space-y-3 sm:space-y-4">
+                    <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       <div className="flex items-center space-x-2">
                         <span className="font-medium">📧</span>
                         <span className="truncate">{card.Email}</span>
@@ -508,7 +508,7 @@ const ViewCardsPage = () => {
 
                     {/* Tags Preview - Show when NOT expanded */}
                     {!isTagsExpanded && hasTags && (
-                      <div className="mt-3 flex flex-wrap gap-1">
+                      <div className="mt-2 sm:mt-3 flex flex-wrap gap-1 sm:gap-2">
                         {parsedTags.slice(0, 3).map((tag, i) => (
                           <span
                             key={i}
@@ -533,7 +533,7 @@ const ViewCardsPage = () => {
                           e.stopPropagation();
                           setExpandedTagsCard(card.CardId);
                         }}
-                        className="w-full mt-3 text-xs px-2 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors flex items-center justify-center gap-1"
+                        className="w-full mt-2 sm:mt-3 text-xs px-2 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors flex items-center justify-center gap-1"
                       >
                         <Sparkles className="w-3 h-3" />
                         {hasTags ? 'Gérer les tags' : 'Ajouter des tags'} {/* ✅ Fixed: Use parsed length */}
@@ -550,7 +550,7 @@ const ViewCardsPage = () => {
                     )}
 
                     {/* Actions */}
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -598,17 +598,17 @@ const ViewCardsPage = () => {
           })}
         </div>
       ) : (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-5xl">📇</span>
+        <div className="text-center py-12 sm:py-16">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-4xl sm:text-5xl">📇</span>
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
             Aucune carte de visite
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Créez votre première carte pour commencer</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">Créez votre première carte pour commencer</p>
           <button
             onClick={() => router.push('/account/cards/create')}
-            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            className="px-4 py-2 sm:px-6 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm sm:text-base"
           >
             Créer une carte
           </button>

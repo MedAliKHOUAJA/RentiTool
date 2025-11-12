@@ -1,4 +1,3 @@
-// src/app/(account-pages)/account/cards/page.tsx
 'use client';
 
 import React from 'react';

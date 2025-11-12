@@ -1,4 +1,3 @@
-// src/features/reviews/components/ReviewStats.tsx
 import React from 'react';
 import { StarRating } from './StarRating';
 import { ReviewStatistics } from '../types';

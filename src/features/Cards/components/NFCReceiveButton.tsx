@@ -1,4 +1,3 @@
-// src/features/Cards/components/NFCReceiveButton.tsx
 'use client';
 
 import { useNFC } from '@/features/Cards/hooks/useNFC';

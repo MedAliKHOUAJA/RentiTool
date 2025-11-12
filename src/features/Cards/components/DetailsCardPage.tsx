@@ -1,11 +1,10 @@
-// src/features/Cards/components/DetailsCardPage.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { getCardById, saveSharedCard } from '@/features/Cards/actions/Cards';
 import { Card } from '@/features/Cards/types';
-import { Mail, Phone, Globe, MapPin, Linkedin, Facebook, Twitter, Instagram, Github, LucideIcon } from 'lucide-react';
+import { Mail, Phone, Globe, MapPin, Linkedin, Facebook, Twitter, Instagram, Github, LucideIcon, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { NFCShareButton } from '@/features/Cards/components/NFCShareButton';
 import { NFCReceiveButton } from '@/features/Cards/components/NFCReceiveButton';
@@ -87,6 +86,52 @@ const DetailsCardPage = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDownloadVCF = () => {
+    if (!card) return;
+
+    // Build vCard string (v3.0 format for broad compatibility)
+    const vcardLines = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${card.FirstName} ${card.LastName}`,
+      `N:${card.LastName};${card.FirstName};;;`,
+      card.CompanyName ? `ORG:${card.CompanyName}` : '',
+      card.JobTitle ? `TITLE:${card.JobTitle}` : '',
+      card.Phone ? `TEL;TYPE=WORK,VOICE:${card.Phone}` : '',
+      card.Email ? `EMAIL;TYPE=WORK:${card.Email}` : '',
+      card.WebSite ? `URL:${card.WebSite}` : '',
+      // Address format: ADR;TYPE=WORK:;;street;city;state;postal;country
+      `ADR;TYPE=WORK:;;${card.Delegation || ''};${card.Governorate || ''};;${card.Postalcode || ''};`,
+    ];
+
+    // Add social links
+    if (card.SocialLinks && Object.keys(card.SocialLinks).length > 0) {
+      Object.entries(card.SocialLinks).forEach(([platform, url]) => {
+        if (url) {
+          vcardLines.push(`X-SOCIALPROFILE;type=${platform}:${url}`);
+        }
+      });
+    }
+
+    vcardLines.push('END:VCARD');
+
+    // Filter out empty lines and join
+    const vcard = vcardLines.filter(line => line && !line.endsWith(':')).join('\n');
+
+    // Create Blob and trigger download
+    const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${card.FirstName}_${card.LastName}.vcf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success('Contact téléchargé !');
   };
 
   if (loading) return <div className="text-center py-10">Chargement...</div>;
@@ -228,6 +273,16 @@ const DetailsCardPage = () => {
         <div className="flex flex-wrap justify-center gap-2 md:gap-4">
           {!isShared && <NFCShareButton cardId={card.CardId} />}
           {isShared && <NFCReceiveButton />}
+          
+          {/* VCF Download Button - Available for everyone */}
+          <button 
+            onClick={handleDownloadVCF} 
+            className="px-4 md:px-6 py-2 md:py-3 text-sm md:text-base bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Télécharger Contact
+          </button>
+
           {!isShared && (
             <button onClick={() => router.push(`/account/cards/edit/${card.CardId}`)} className="px-4 md:px-6 py-2 md:py-3 text-sm md:text-base bg-blue-600 text-white rounded-lg">
               Modifier

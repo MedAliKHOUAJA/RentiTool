@@ -9,7 +9,7 @@ import SwitchDarkMode from "@/shared/SwitchDarkMode";
 import { useAuth } from "@/hooks/useAuth";
 import AvatarDropdown from "./AvatarDropdown";
 import NotificationBell from "@/features/notifications/presentation/components/NotificationBell";
-import MobileHeader from "./MobileHeader"; // ✅ NOUVEAU
+import MobileHeader from "./MobileHeader"; 
 
 export interface MainNav1Props {
   className?: string;

@@ -8,7 +8,7 @@ import { createCardSchema, CreateCardFormData } from '@/features/Cards/schemas/C
 import { createCard, getCurrentUser } from '@/features/Cards/actions/Cards';
 import { useCardAI } from '@/features/Cards/hooks/useCardAI';
 import toast from 'react-hot-toast';
-import { Sparkles, Check, Scan } from 'lucide-react';
+import { Sparkles, Check, Scan, Copy, CheckCheck } from 'lucide-react';
 import { BusinessCardScanner } from '@/features/Cards/components/BusinessCardScanner';
 
 interface User {
@@ -63,7 +63,10 @@ const CreateCardPage = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [enrichmentApplied, setEnrichmentApplied] = useState(false);
   const [specialties, setSpecialties] = useState<string[]>([]);
+  const [enrichedJobTitle, setEnrichedJobTitle] = useState<string>('');
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedTitle, setCopiedTitle] = useState(false);
 
   // Watch form fields
   const profilePicture = watch('profilePicture');
@@ -77,7 +80,6 @@ const CreateCardPage = () => {
         const data = await getCurrentUser();
         if (data) {
           setUser(data);
-          // Prefill form with user data (users can modify if desired)
           setValue('firstName', data.FirstName || '');
           setValue('lastName', data.LastName || '');
           setValue('email', data.Email || '');
@@ -115,6 +117,35 @@ const CreateCardPage = () => {
     }
   }, [companyLogo]);
 
+  const handleCopySpecialty = async (specialty: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(specialty);
+      setCopiedIndex(index);
+      toast.success('Copié !');
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      toast.error('Erreur lors de la copie');
+    }
+  };
+
+  const handleCopyTitle = async (title: string) => {
+    try {
+      await navigator.clipboard.writeText(title);
+      setCopiedTitle(true);
+      toast.success('Titre copié !');
+      setTimeout(() => setCopiedTitle(false), 2000);
+    } catch (err) {
+      toast.error('Erreur lors de la copie');
+    }
+  };
+
+  const handleApplyTitle = () => {
+    if (enrichedJobTitle) {
+      setValue('jobTitle', enrichedJobTitle, { shouldValidate: true });
+      toast.success('Titre appliqué !');
+    }
+  };
+
   const handleEnrichment = async () => {
     if (!jobTitle || !companyName) {
       toast.error('Veuillez remplir le titre professionnel et le nom de l\'entreprise');
@@ -131,8 +162,7 @@ const CreateCardPage = () => {
       });
 
       if (result.enrichedJobTitle) {
-        setValue('jobTitle', result.enrichedJobTitle);
-        toast.success('Titre professionnel enrichi !');
+        setEnrichedJobTitle(result.enrichedJobTitle);
       }
 
       setSpecialties(result.suggestedSpecialties || []);
@@ -447,17 +477,69 @@ const CreateCardPage = () => {
                 )}
               </button>
 
+              {/* Enriched Job Title with Copy Button */}
+              {enrichmentApplied && enrichedJobTitle && (
+                <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                      Titre professionnel suggéré:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleApplyTitle}
+                      className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+                    >
+                      Appliquer
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="flex-1 text-sm font-medium text-blue-700 dark:text-blue-300">
+                      {enrichedJobTitle}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTitle(enrichedJobTitle)}
+                      className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                      title="Copier le titre"
+                    >
+                      {copiedTitle ? (
+                        <CheckCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Specialties with Copy Buttons */}
               {enrichmentApplied && specialties.length > 0 && (
                 <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg">
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Spécialités suggérées:</p>
-                  <div className="flex flex-wrap gap-2">
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">
+                    Spécialités suggérées:
+                  </p>
+                  <div className="space-y-2">
                     {specialties.map((specialty, idx) => (
-                      <span
+                      <div
                         key={idx}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 rounded-full text-xs font-medium"
+                        className="flex items-center justify-between gap-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                       >
-                        {specialty}
-                      </span>
+                        <span className="flex-1 text-sm text-blue-700 dark:text-blue-200 font-medium">
+                          {specialty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopySpecialty(specialty, idx)}
+                          className="p-1.5 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                          title="Copier"
+                        >
+                          {copiedIndex === idx ? (
+                            <CheckCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          )}
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
