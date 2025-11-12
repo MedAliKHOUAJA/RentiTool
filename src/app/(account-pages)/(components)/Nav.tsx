@@ -16,6 +16,8 @@ export const Nav = () => {
     "/tools-management" as Route,
     "/reviews" as Route,
     "/reviews/about-me" as Route, 
+    "/my-rentals" as Route,
+    "/my-payments" as Route
   ];
 
   return (

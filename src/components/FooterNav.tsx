@@ -1,146 +1,98 @@
 "use client";
 
-import {
-  MagnifyingGlassIcon,
-  UserCircleIcon,
+import React from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { 
+  WrenchScrewdriverIcon,
+  MapPinIcon,
   HomeIcon,
   PlusCircleIcon,
-  ClipboardDocumentListIcon,
+  UserCircleIcon
 } from "@heroicons/react/24/outline";
-import React, { useEffect, useRef } from "react";
+import {
+  WrenchScrewdriverIcon as WrenchSolid,
+  MapPinIcon as MapPinSolid,
+  HomeIcon as HomeIconSolid,
+  PlusCircleIcon as PlusCircleSolid,
+  UserCircleIcon as UserCircleSolid
+} from "@heroicons/react/24/solid";
+import { useAuth } from "@/hooks/useAuth";
 import { PathName } from "@/routers/types";
 
-import isInViewport from "@/utils/isInViewport";
-import { Route } from "next/types";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-
-let WIN_PREV_POSITION = 0;
-if (typeof window !== "undefined") {
-  WIN_PREV_POSITION = window.pageYOffset;
-}
-
-interface NavItem {
-  name: string;
-  link?: PathName;
-  icon: any;
-  isCentral?: boolean;
-}
-
-const NAV: NavItem[] = [
-  {
-    name: "Outils",
-    link: "/tools",
-    icon: MagnifyingGlassIcon,
-  },
-  {
-    name: "Locations",
-    link: "/account/rentals" as PathName,
-    icon: ClipboardDocumentListIcon,
-  },
-  {
-    name: "Home",
-    link: "/"  as PathName,
-    icon: HomeIcon,
-    isCentral: true,
-  },
-  {
-    name: "Ajouter",
-    link: "/add-listing" as PathName ,
-    icon: PlusCircleIcon,
-  },
-  {
-    name: "Mon Compte",
-    link: "/account/profile",
-    icon: UserCircleIcon,
-  },
-];
-
-const FooterNav = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function FooterNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.addEventListener("scroll", handleEvent);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("scroll", handleEvent);
-      }
-    };
-  }, []);
+  const navItems = [
+    {
+      name: "Outils",
+      href:"/tools" ,
+      icon: WrenchScrewdriverIcon,
+      iconActive: WrenchSolid,
+    },
+    {
+      name: "Lieux",
+      href: "/account/rentals" as PathName,
+      icon: MapPinIcon,
+      iconActive: MapPinSolid,
+    },
+    {
+      name: "Home",
+      href:"/"  as PathName,
+      icon: HomeIcon,
+      iconActive: HomeIconSolid,
+      isHome: true,
+    },
+    {
+      name: "Ajouter",
+      href: "/add-listing" as PathName ,
+      icon: PlusCircleIcon,
+      iconActive: PlusCircleSolid,
+    },
+    {
+      name: "Compte",
+      href: "/account/profile",
+      icon: UserCircleIcon,
+      iconActive: UserCircleSolid,
+    },
+  ];
 
-  const handleEvent = () => {
-    if (typeof window !== "undefined") {
-      window.requestAnimationFrame(showHideHeaderMenu);
-    }
-  };
 
-  const showHideHeaderMenu = () => {
-    let currentScrollPos = window.pageYOffset;
-    if (!containerRef.current) return;
 
-    if (currentScrollPos > WIN_PREV_POSITION) {
-      if (
-        isInViewport(containerRef.current) &&
-        currentScrollPos - WIN_PREV_POSITION < 80
-      ) {
-        return;
-      }
-      containerRef.current.classList.add("FooterNav--hide");
-    } else {
-      if (
-        !isInViewport(containerRef.current) &&
-        WIN_PREV_POSITION - currentScrollPos < 80
-      ) {
-        return;
-      }
-      containerRef.current.classList.remove("FooterNav--hide");
-    }
-
-    WIN_PREV_POSITION = currentScrollPos;
-  };
-
-  const renderItem = (item: NavItem, index: number) => {
-    const isActive = pathname === item.link;
-
-    if (item.isCentral) {
-      return (
-        <Link
-          key={index}
-          href={item.link || "/"  as PathName}
-          className={`flex items-center justify-center w-16 h-16 rounded-full bg-primary-600 text-white shadow-lg transform -translate-y-1/2`}
-        >
-          <item.icon className="w-8 h-8" />
-        </Link>
-      );
-    }
-
-    return (
-      <Link
-        key={index}
-        href={item.link || "/"  as PathName}
-        className={`flex flex-col items-center justify-center text-neutral-500 dark:text-neutral-300/90 ${
-          isActive ? "text-primary-600 dark:text-primary-400" : ""
-        }`}
-      >
-        <item.icon className={`w-6 h-6`} />
-        <span className="text-[11px] leading-none mt-1">{item.name}</span>
-      </Link>
-    );
+  const isActive = (item: typeof navItems[0]) => {
+    if (item.isHome) return pathname === "/";
+    return pathname.startsWith(item.href.split('?')[0]);
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="FooterNav block md:!hidden bg-white dark:bg-neutral-800 fixed bottom-0 inset-x-0 z-30 border-t border-neutral-300 dark:border-neutral-700 transition-transform duration-300 ease-in-out"
-    >
-      <div className="w-full max-w-lg flex justify-around items-center mx-auto text-sm text-center ">
-        {NAV.map(renderItem)}
-      </div>
-    </div>
-  );
-};
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 shadow-lg">
+      <div className="grid grid-cols-5 h-16">
+        {navItems.map((item) => {
+          const active = isActive(item);
+          const Icon = active ? item.iconActive : item.icon;
 
-export default FooterNav;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`
+                flex flex-col items-center justify-center gap-1
+                transition-all duration-200
+                ${active 
+                  ? "text-primary-600 dark:text-primary-500 scale-105" 
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+                }
+              `}
+            >
+              <Icon className="w-6 h-6" />
+              <span className={`text-xs font-medium ${active ? "font-semibold" : ""}`}>
+                {item.name}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

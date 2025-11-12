@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { RentalDataType, RentalCreateRequest } from '@/data/types';
+import { NotificationService } from '@/features/notifications/application/services/notification.service';
+import { AzureServiceBusService } from '@/features/notifications/infrastructure/azure-service-bus.service';
+import { NotificationType, NotificationPriority } from '@/features/notifications/domain/notification.types';
+import { PostgresNotificationRepository } from '@/features/notifications/infrastructure/postgres-notification.repository';
 
 // GET /api/rental-bookings - Get all rental bookings
 export async function GET(request: NextRequest) {
@@ -74,18 +78,40 @@ export async function POST(request: NextRequest) {
     const body: RentalCreateRequest = await request.json();
     const {
       toolId,
-      ownerId,
+      ownerId, // ⚠️ Ne pas faire confiance à cette valeur du frontend
       renterId,
       totalPrice,
       rentalDateStart,
       rentalDateEnd,
-      statusId = 1, // Default to pending status
-      paymentMethodId = 1, // Default to Credit Card
+      statusId = 1,
+      paymentMethodId = 1,
     } = body;
 
     // Validate required fields
-    if (!toolId || !ownerId || !renterId || !totalPrice || !rentalDateStart || !rentalDateEnd) {
+    if (!toolId || !renterId || !totalPrice || !rentalDateStart || !rentalDateEnd) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // ✅ NOUVEAU : Récupérer le VRAI propriétaire depuis la base de données
+    console.log('🔍 [RentalBooking] Fetching real owner from database...');
+    
+    const toolOwnerResult = await query(`
+      SELECT "Ownerid" as "realOwnerId"
+      FROM "Tools"
+      WHERE "Toolid" = $1
+    `, [toolId]);
+
+    if (toolOwnerResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
+    }
+
+    const realOwnerId = toolOwnerResult.rows[0].realOwnerId;
+    
+    console.log('✅ [RentalBooking] Real owner found:', realOwnerId);
+    console.log('⚠️ [RentalBooking] Owner from body:', ownerId);
+    
+    if (realOwnerId !== ownerId) {
+      console.warn('⚠️ [RentalBooking] Owner mismatch! Using real owner from DB.');
     }
 
     // Check for date overlaps
@@ -104,6 +130,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // ✅ Utiliser le VRAI propriétaire de la base de données
     const insertResult = await query(`
       INSERT INTO "Rentals" (
         "ToolId", 
@@ -125,7 +152,8 @@ export async function POST(request: NextRequest) {
         "StatusId",
         "CreatedAt",
         "UpdatedAt"
-    `, [toolId, ownerId, renterId, totalPrice, rentalDateStart, rentalDateEnd, statusId]);
+    `, [toolId, realOwnerId, renterId, totalPrice, rentalDateStart, rentalDateEnd, statusId]);
+    //           ^^^^^^^^^^^^ ✅ Utiliser realOwnerId au lieu de ownerId
 
     const newRental = insertResult.rows[0];
     
@@ -144,7 +172,70 @@ export async function POST(request: NextRequest) {
       console.log('Payment created for rental:', newRental.RentalId);
     } catch (paymentErr: any) {
       console.error('Failed to create payment for rental:', paymentErr?.message || paymentErr);
-      // Don't fail the rental creation if payment creation fails
+    }
+
+    // ✅ 🔔 Envoyer la notification au VRAI propriétaire
+    try {
+      console.log('🔔 [RentalBooking] Starting notification process...');
+      
+      // Récupérer les infos de l'outil et des utilisateurs
+      const toolInfoResult = await query(`
+        SELECT 
+          t."Title" as "toolName",
+          owner."FirstName" || ' ' || owner."LastName" as "ownerName",
+          renter."FirstName" || ' ' || renter."LastName" as "renterName"
+        FROM "Tools" t
+        LEFT JOIN "User" owner ON t."Ownerid" = owner."userId"
+        LEFT JOIN "User" renter ON renter."userId" = $1
+        WHERE t."Toolid" = $2
+      `, [renterId, toolId]);
+
+      const toolInfo = toolInfoResult.rows[0] || {
+        toolName: `Outil #${toolId}`,
+        ownerName: 'Propriétaire',
+        renterName: 'Locataire',
+      };
+
+      console.log('📦 [RentalBooking] Tool info retrieved:', toolInfo);
+
+      const repository = new PostgresNotificationRepository();
+      const serviceBusService = new AzureServiceBusService();
+      const notificationService = new NotificationService(repository, serviceBusService);
+
+      console.log('📤 [RentalBooking] Sending notification to REAL owner:', realOwnerId);
+
+      // Formatter les dates
+      const startDate = new Date(rentalDateStart);
+      const endDate = new Date(rentalDateEnd);
+      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // ✅ Envoyer au VRAI propriétaire
+      await notificationService.sendNotification({
+        type: NotificationType.BOOKING_REQUESTED,
+        userId: realOwnerId, // ✅ CORRECTION : Utiliser realOwnerId
+        title: '📅 Nouvelle demande de réservation',
+        message: `${toolInfo.renterName} souhaite réserver votre outil "${toolInfo.toolName}" du ${startDate.toLocaleDateString('fr-FR')} au ${endDate.toLocaleDateString('fr-FR')} (${daysDiff} jour${daysDiff > 1 ? 's' : ''}).`,
+        data: {
+          toolId,
+          toolName: toolInfo.toolName,
+          renterName: toolInfo.renterName,
+          renterId,
+          startDate: rentalDateStart,
+          endDate: rentalDateEnd,
+          totalPrice: totalPrice,
+          days: daysDiff,
+          rentalId: newRental.RentalId,
+          paymentMethodId,
+        },
+        priority: NotificationPriority.HIGH,
+        toolId: toolId,
+        rentalId: newRental.RentalId,
+      });
+
+      console.log('✅ [RentalBooking] Notification sent successfully to owner:', realOwnerId);
+    } catch (notifError: any) {
+      console.error('❌ [RentalBooking] Failed to send notification:', notifError);
+      console.error('❌ [RentalBooking] Error details:', notifError.message);
     }
 
     // Générer automatiquement un message de confirmation (non-bloquant)
@@ -167,7 +258,6 @@ export async function POST(request: NextRequest) {
         console.warn('Message generation failed (non-critical):', err);
       });
     } catch (msgErr) {
-      // Ignorer les erreurs de génération de message
       console.warn('Could not generate confirmation message:', msgErr);
     }
 
@@ -188,7 +278,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (err: any) {
     console.error("/api/rental-bookings POST error:", err?.message || err);
-    return NextResponse.json({ error: `Failed to create rental booking: ${err?.message || err}` }, { status: 500 });
+    return NextResponse.json({ 
+      error: `Failed to create rental booking: ${err?.message || err}` 
+    }, { status: 500 });
   }
 }
 

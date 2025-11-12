@@ -1,13 +1,14 @@
 import { ServiceBusClient, ServiceBusSender } from "@azure/service-bus";
 
 const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING!;
-const topicName = "notifications";
+const queueName = process.env.AZURE_SERVICE_BUS_QUEUE_NAME || "notifications-queue";
 
 let client: ServiceBusClient | null = null;
 let sender: ServiceBusSender | null = null;
 
 export function getServiceBusClient(): ServiceBusClient {
   if (!client) {
+    console.log('🔌 [Service Bus] Creating client...');
     client = new ServiceBusClient(connectionString);
   }
   return client;
@@ -15,8 +16,10 @@ export function getServiceBusClient(): ServiceBusClient {
 
 export function getSender(): ServiceBusSender {
   if (!sender) {
+    console.log('📤 [Service Bus] Creating sender for queue:', queueName);
     const client = getServiceBusClient();
-    sender = client.createSender(topicName);
+    // ✅ CHANGEMENT : createSender pour la QUEUE
+    sender = client.createSender(queueName);
   }
   return sender;
 }

@@ -24,3 +24,12 @@ az servicebus namespace authorization-rule create --name RentiToolAppPolicy --na
 
 # 7. Récupérer la connection string
 az servicebus namespace authorization-rule keys list --name RentiToolAppPolicy --namespace-name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP --query primaryConnectionString --output tsv
+
+#8. Crér queue
+az servicebus queue create `
+  --name notifications-queue `
+  --namespace-name sb-rentitool `
+  --resource-group rg-sentiment-analysis `
+  --max-delivery-count 10 `
+  --lock-duration PT5M `
+  --enable-dead-lettering-on-message-expiration true

@@ -1,4 +1,3 @@
-// src/app/login/layout.tsx
 import { Poppins } from "next/font/google";
 import ClientCommons from "../ClientCommons";
 import "../globals.css";

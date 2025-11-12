@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import { Poppins } from "next/font/google";
 import SiteHeader from "./(client-components)/(Header)/SiteHeader";
 import ClientCommons from "./ClientCommons";
@@ -37,7 +36,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={poppins.className}>
-      <body className="bg-white text-base dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200">
+      <body className="bg-white text-base dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200 pt-[60px] pb-16 lg:pt-20 lg:pb-0">
+        {/* ✅ pt-[60px] = hauteur du MobileHeader (1 ligne) */}
+        {/* ✅ pb-16 = padding pour FooterNav (bottom nav) */}
         <Providers>
           <ClientCommons />
           <SiteHeader />

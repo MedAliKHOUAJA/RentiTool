@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { query } from "@/db";
+import { NotificationService } from "@/features/notifications/application/services/notification.service";
+import { AzureServiceBusService } from "@/features/notifications/infrastructure/azure-service-bus.service";
+import { NotificationType, NotificationPriority } from "@/features/notifications/domain/notification.types";
+import { PostgresNotificationRepository } from "@/features/notifications/infrastructure/postgres-notification.repository";
 
 export async function POST(request: Request) {
   try {
@@ -96,6 +100,7 @@ export async function POST(request: Request) {
       const toolIdCol = has(['Toolid', 'ToolId', 'ToolID', 'Id', 'ID', 'id', 'toolid', 'tool_id']);
       const ownerCol = has(['Ownerid', 'OwnerId', 'ownerid', 'owner_id', 'UserId', 'userid', 'user_id']);
       const priceCol = has(['RentalPricePerDay', 'rentalpriceperday', 'rental_price_per_day', 'DailyPrice', 'dailyprice', 'daily_price', 'Price', 'price']);
+      const titleCol = has(['Title', 'title', 'Name', 'name', 'ToolName', 'toolname', 'tool_name']);
 
       if (!toolIdCol || !ownerCol || !priceCol) {
         return NextResponse.json({ 
@@ -105,7 +110,11 @@ export async function POST(request: Request) {
 
       const q = (name: string) => `"${name}"`;
       const sql = `
-        SELECT ${q(toolIdCol)} as "ToolId", ${q(ownerCol)} as "OwnerId", ${q(priceCol)} as "RentalPricePerDay"
+        SELECT 
+          ${q(toolIdCol)} as "ToolId", 
+          ${q(ownerCol)} as "OwnerId", 
+          ${q(priceCol)} as "RentalPricePerDay"
+          ${titleCol ? `, ${q(titleCol)} as "Title"` : ''}
         FROM ${q(resolvedTable.schema)}.${q(resolvedTable.table)}
         WHERE ${q(toolIdCol)} = $1
       `;
@@ -136,9 +145,10 @@ export async function POST(request: Request) {
     
     // Get a valid renter ID from the User table
     let renterId;
+    let renterName = '';
     try {
       const userResult = await query(`
-        SELECT "userId" 
+        SELECT "userId", "FirstName", "LastName" 
         FROM "User" 
         LIMIT 1
       `);
@@ -150,6 +160,7 @@ export async function POST(request: Request) {
       }
       
       renterId = userResult.rows[0].userId;
+      renterName = `${userResult.rows[0].FirstName} ${userResult.rows[0].LastName}`;
     } catch (userError: any) {
       console.error("Error fetching user:", userError);
       return NextResponse.json({ 
@@ -187,17 +198,17 @@ export async function POST(request: Request) {
     let insertResult;
     try {
       insertResult = await query(`
-      INSERT INTO "Rentals" (
-        "ToolId", 
-        "OwnerId", 
-        "RenterId", 
-        "TotalPrice", 
-        "RentalDateStart", 
-        "RentalDateEnd", 
-        "StatusId"
-      ) VALUES ($1, $2, $3, $4, $5, $6, 1)
-      RETURNING "RentalId"
-    `, [toolId, ownerId, renterId, totalPrice, startDate, endDate]);
+        INSERT INTO "Rentals" (
+          "ToolId", 
+          "OwnerId", 
+          "RenterId", 
+          "TotalPrice", 
+          "RentalDateStart", 
+          "RentalDateEnd", 
+          "StatusId"
+        ) VALUES ($1, $2, $3, $4, $5, $6, 1)
+        RETURNING "RentalId"
+      `, [toolId, ownerId, renterId, totalPrice, startDate, endDate]);
     } catch (dbError: any) {
       console.error("Database error when creating rental:", dbError);
       return NextResponse.json({ 
@@ -207,6 +218,56 @@ export async function POST(request: Request) {
 
     const rentalId = insertResult.rows[0].RentalId;
 
+    //  Envoyer la notification au propriétaire
+    try {
+      console.log('🔔 [Booking] Starting notification process...');
+      console.log('   - Owner ID:', ownerId);
+      console.log('   - Renter:', renterName);
+      console.log('   - Tool:', tool.Title);
+      console.log('   - Rental ID:', rentalId);
+    
+      // Initialiser les services
+      console.log('📦 [Booking] Initializing services...');
+      const repository = new PostgresNotificationRepository();
+      const serviceBusService = new AzureServiceBusService();
+      const notificationService = new NotificationService(repository, serviceBusService);
+    
+      console.log('✅ [Booking] Services initialized');
+    
+      // Envoyer la notification
+      console.log('📤 [Booking] Calling sendNotification...');
+      
+      await notificationService.sendNotification({
+        type: NotificationType.BOOKING_REQUESTED,
+        userId: ownerId,
+        title: '📅 Nouvelle demande de réservation',
+        message: `${renterName} souhaite réserver votre outil "${tool.Title || 'Outil'}" du ${start.toLocaleDateString('fr-FR')} au ${end.toLocaleDateString('fr-FR')}.`,
+        data: {
+          toolId,
+          toolName: tool.Title || 'Outil',
+          renterName,
+          renterId,
+          startDate: startDate,
+          endDate: endDate,
+          totalPrice,
+          days: daysDiff,
+          quantity,
+          rentalId,
+        },
+        priority: NotificationPriority.HIGH,
+        toolId: parseInt(toolId),
+        rentalId: rentalId,
+      });
+    
+      console.log('✅ [Booking] sendNotification completed');
+      console.log('✅ [Booking] Notification sent to owner:', ownerId);
+    } catch (notifError: any) {
+      // Ne pas bloquer la création de réservation si la notification échoue
+      console.error('❌ [Booking] Failed to send notification:', notifError);
+      console.error('❌ [Booking] Error stack:', notifError.stack);
+      console.error('❌ [Booking] Error details:', JSON.stringify(notifError, null, 2));
+    }
+    
     return NextResponse.json({
       message: `Reservation created successfully! Rental ID: ${rentalId}`,
       rentalId,

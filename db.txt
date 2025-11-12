@@ -105,3 +105,12 @@ ClassificationImages
 2	"userImage"
 3	"RatingImage"
 4	"ToolImage"
+
+
+StatusId    StatusName
+1	        "Requested"
+2	        "Accepted"
+3	        "Rejected"
+4	        "In Progress"
+5	        "Completed"
+6	        "Cancelled"
