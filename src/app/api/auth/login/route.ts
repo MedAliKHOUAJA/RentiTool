@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db, testConnection } from '@/lib/database';
+import { sendEmail, emailTemplates } from '@/lib/resend';
+
+export const runtime = 'nodejs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'rentitool-secret-key-2024';
 
@@ -29,7 +32,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 LOGIN - Recherche utilisateur avec email:', cleanEmail);
     
     const result = await db.query(
-      `SELECT "userId", "FirstName", "LastName", "Email", "Password", "RoleId", "LocationId"
+      `SELECT "userId", "FirstName", "LastName", "Email", "Password", "RoleId", "LocationId", "Phone"
        FROM "User" WHERE "Email" = $1`,
       [cleanEmail]
     );
@@ -107,6 +110,71 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('✅ Connexion réussie pour:', user.Email);
+
+    // Envoi d'un email de notification de connexion avec géolocalisation IP
+    try {
+      const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      console.log(`🔍 IP détectée: ${ip}`);  // Log pour tracer l'IP
+
+      // Skip geo si IP locale (dev)
+      let locationInfo = 'Localisation inconnue';
+      if (ip === 'unknown' || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.')) {
+        console.log('⚠️ IP locale détectée – Skip géoloc (test dev).');
+      } else {
+        // Essai AbstractAPI (avec clé)
+        if (process.env.IPGEO_API_KEY) {
+          try {
+            const geoResponse = await fetch(
+              `https://ipgeolocation.abstractapi.com/v1/?api_key=${process.env.IPGEO_API_KEY}&ip_address=${ip}`
+            );
+            console.log(`🌍 AbstractAPI status: ${geoResponse.status}`);
+            if (geoResponse.ok) {
+              const geoData = await geoResponse.json();
+              locationInfo = `${geoData.city || 'N/A'}, ${geoData.country || 'N/A'}`;
+              console.log(`🌍 Localisation IP (AbstractAPI): ${locationInfo} pour IP ${ip}`);
+            } else {
+              console.warn(`⚠️ AbstractAPI erreur: ${geoResponse.status} – Fallback sans clé.`);
+            }
+          } catch (geoErr) {
+            console.warn('⚠️ Erreur AbstractAPI:', geoErr);
+          }
+        } else {
+          console.log('ℹ️ Pas de IPGEO_API_KEY – Utilise fallback sans clé.');
+        }
+
+        // Fallback sans clé : ipwhois.app (gratuit, 1000 req/jour)
+        if (locationInfo === 'Localisation inconnue') {
+          try {
+            const fallbackResponse = await fetch(`https://ipwhois.app/json/${ip}`);
+            console.log(`🌍 Fallback status: ${fallbackResponse.status}`);
+            if (fallbackResponse.ok) {
+              const fallbackData = await fallbackResponse.json();
+              locationInfo = `${fallbackData.city || 'N/A'}, ${fallbackData.country || 'N/A'}`;
+              console.log(`🌍 Localisation IP (fallback): ${locationInfo} pour IP ${ip}`);
+            }
+          } catch (fallbackErr) {
+            console.warn('⚠️ Erreur fallback geo:', fallbackErr);
+          }
+        }
+      }
+
+      const when = new Date().toLocaleString('fr-FR', { timeZone: 'UTC' });
+      const { subject, html } = emailTemplates.loginNotification(
+        user.FirstName, 
+        user.Email, 
+        when, 
+        ip, 
+        locationInfo  // Passe toujours, même si 'inconnue'
+      );
+      const result = await sendEmail(user.Email, subject, html);
+      if (!result.success) {
+        console.warn('⚠️ Échec envoi email login:', result.error);
+      } else {
+        console.log(`📧 Email de login envoyé à: ${user.Email} | Localisation incluse: ${locationInfo}`);
+      }
+    } catch (mailErr) {
+      console.warn('⚠️ Erreur lors de l’envoi de l’email de login:', mailErr);
+    }
     return response;
 
   } catch (err) {

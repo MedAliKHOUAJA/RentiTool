@@ -1,8 +1,11 @@
+const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
   // typedRoutes has moved out of experimental in Next 13.4+ / 15
   typedRoutes: true,
+  // Fix workspace root inference when multiple lockfiles are present
+  outputFileTracingRoot: __dirname,
   experimental: {
     // Remove appDir: the App Router is enabled by default
   },
