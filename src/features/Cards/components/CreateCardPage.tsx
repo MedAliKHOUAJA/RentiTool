@@ -8,7 +8,10 @@ import { createCardSchema, CreateCardFormData } from '@/features/Cards/schemas/C
 import { createCard, getCurrentUser } from '@/features/Cards/actions/Cards';
 import { useCardAI } from '@/features/Cards/hooks/useCardAI';
 import toast from 'react-hot-toast';
-import { Sparkles, Check } from 'lucide-react';
+import { Sparkles, Check, Scan } from 'lucide-react';
+import { useCallback } from 'react'; 
+// NEW IMPORTS
+import { BusinessCardScanner } from '@/features/Cards/components/BusinessCardScanner';
 
 interface User {
   userId: string;
@@ -57,6 +60,9 @@ const CreateCardPage = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [enrichmentApplied, setEnrichmentApplied] = useState(false);
   const [specialties, setSpecialties] = useState<string[]>([]);
+
+  // NEW STATE
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // Watch form fields
   const profilePicture = watch('profilePicture');
@@ -110,31 +116,86 @@ const CreateCardPage = () => {
       return;
     }
 
-  try {
-    const result = await enrichCard({
-      FirstName: user?.FirstName,
-      LastName: user?.LastName,
-      JobTitle: jobTitle,  // ✅ Now matches backend
-      CompanyName: companyName,  // ✅ Now matches backend
-      SpecialtiesAndExpertise: specialties,
-    });
+    try {
+      const result = await enrichCard({
+        FirstName: user?.FirstName,
+        LastName: user?.LastName,
+        JobTitle: jobTitle,
+        CompanyName: companyName,
+        SpecialtiesAndExpertise: specialties,
+      });
 
-      // Safely set enriched job title
       if (result.enrichedJobTitle) {
         setValue('jobTitle', result.enrichedJobTitle);
         toast.success('Titre professionnel enrichi !');
       }
 
-      // Safely set specialties (fallback to empty array)
       setSpecialties(result.suggestedSpecialties || []);
       setEnrichmentApplied(true);
-
       toast.success('Enrichissement appliqué avec succès !');
     } catch (err) {
       console.error('Enrichment error:', err);
       toast.error('Erreur lors de l\'enrichissement');
     }
   };
+
+  // NEW HANDLER
+const handleScannedData = useCallback((data: any) => {
+  console.log('📥 CreateCard: handleScannedData received:', JSON.stringify(data, null, 2));
+  console.log('📥 CreateCard: Entities object:', data.entities);
+
+  const e = data.entities || {};
+  let fieldsSet = 0;
+
+  // Set job title (from 'title' field)
+  if (e.title && e.title.trim()) {
+    console.log('✏️ CreateCard: Setting jobTitle:', e.title);
+    setValue('jobTitle', e.title.trim(), { 
+      shouldValidate: true, 
+      shouldDirty: true,
+      shouldTouch: true 
+    });
+    fieldsSet++;
+    toast.success('Titre professionnel extrait !');
+  } else {
+    console.log('⚠️ CreateCard: No title found in entities');
+  }
+
+  // Set company name (from 'company' field)
+  if (e.company && e.company.trim()) {
+    console.log('🏢 CreateCard: Setting companyName:', e.company);
+    setValue('companyName', e.company.trim(), { 
+      shouldValidate: true, 
+      shouldDirty: true,
+      shouldTouch: true 
+    });
+    fieldsSet++;
+    toast.success('Nom de l\'entreprise extrait !');
+  } else {
+    console.log('⚠️ CreateCard: No company found in entities');
+  }
+
+  // Set website (from 'website' field)
+  if (e.website && e.website.trim()) {
+    console.log('🌐 CreateCard: Setting webSite:', e.website);
+    setValue('webSite', e.website.trim(), { 
+      shouldValidate: true, 
+      shouldDirty: true,
+      shouldTouch: true 
+    });
+    fieldsSet++;
+    toast.success('Site web extrait !');
+  } else {
+    console.log('⚠️ CreateCard: No website found in entities');
+  }
+
+  if (fieldsSet === 0) {
+    console.warn('⚠️ CreateCard: No fields were extracted from the scan');
+    toast.error('Aucune donnée n\'a pu être extraite de la carte. Veuillez réessayer avec une image plus claire.');
+  } else {
+    console.log(`✅ CreateCard: Successfully set ${fieldsSet} field(s)`);
+  }
+}, [setValue]);
 
   const onSubmit = async (data: CreateCardFormData) => {
     console.log('onSubmit triggered with data:', data);
@@ -225,6 +286,21 @@ const CreateCardPage = () => {
       </div>
 
       <div className="p-4 pb-24 max-w-2xl mx-auto">
+        {/* NEW SCANNER BUTTON (right after the opening div) */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="w-full p-4 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+          >
+            <Scan className="w-5 h-5" />
+            Scanner une Carte de Visite Physique
+          </button>
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+            Prenez une photo de votre carte pour remplir automatiquement les champs
+          </p>
+        </div>
+
         {/* User Info Card */}
         <details className="mb-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <summary className="p-4 cursor-pointer select-none font-medium text-gray-900 dark:text-gray-100 flex items-center justify-between active:bg-gray-50 dark:active:bg-gray-700">
@@ -489,6 +565,13 @@ const CreateCardPage = () => {
           </div>
         </form>
       </div>
+
+      {/* NEW SCANNER MODAL */}
+      <BusinessCardScanner
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onDataExtracted={handleScannedData}
+      />
 
       {/* Bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 pb-20 safe-area-inset-bottom">

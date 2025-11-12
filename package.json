@@ -13,6 +13,7 @@
   "dependencies": {
     "@ai-sdk/google": "^2.0.31",
     "@azure/ai-text-analytics": "^5.1.0",
+    "@gradio/client": "^2.0.0-dev.1",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.0.18",
     "@hookform/resolvers": "^5.2.2",
