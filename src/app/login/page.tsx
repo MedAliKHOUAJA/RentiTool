@@ -1,7 +1,8 @@
 // src/app/login/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { loadFaceModels, startCamera, stopCamera, computeEmbeddingFromVideo, hasMediaDevices } from '@/utils/face';
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -10,6 +11,20 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Face login states
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [faceMode, setFaceMode] = useState(false);
+  const [faceLoading, setFaceLoading] = useState(false);
+  const [faceError, setFaceError] = useState("");
+  const [faceMessage, setFaceMessage] = useState("");
+  const [embedding, setEmbedding] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) stopCamera(videoRef.current);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +61,9 @@ export default function LoginPage() {
         console.log('👤 Utilisateur connecté:', data.user);
         setSuccess('Connexion réussie! Redirection...');
         
-        // Redirection après un court délai
+        // Redirection après un court délai avec onboarding flag
         setTimeout(() => {
-          window.location.href = '/profile';
+          window.location.href = '/profile?onboarding=1';
         }, 1000);
         
       } else {
@@ -103,9 +118,8 @@ export default function LoginPage() {
             <p className="text-sm text-slate-600">
               Connectez-vous pour accéder à votre profil personnel.
             </p>
-            
             {/* Bouton de test */}
-            <button 
+            <button
               onClick={testCredentials}
               className="mt-4 text-xs text-blue-600 hover:underline"
               type="button"
@@ -220,6 +234,113 @@ export default function LoginPage() {
               <a href="/signup" className="text-sky-600 font-medium hover:underline">
                 Créer un compte
               </a>
+            </div>
+
+            {/* Face Login */}
+            <div className="mt-8 border-t pt-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-slate-800">Connexion par visage</h3>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setFaceError("");
+                    setFaceMessage("");
+                    setEmbedding(null);
+                    if (!faceMode) {
+                      try {
+                        setFaceLoading(true);
+                        await loadFaceModels('/models');
+                        setFaceMode(true);
+                        if (videoRef.current) await startCamera(videoRef.current);
+                        setFaceMessage('Caméra démarrée. Regardez bien en face.');
+                      } catch (e) {
+                        console.error('Start face login error', e);
+                        setFaceError("Impossible de démarrer la caméra. Autorisez l'accès.");
+                      } finally {
+                        setFaceLoading(false);
+                      }
+                    } else {
+                      if (videoRef.current) stopCamera(videoRef.current);
+                      setFaceMode(false);
+                      setFaceMessage('Caméra arrêtée');
+                    }
+                  }}
+                  className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200"
+                >
+                  {faceMode ? 'Arrêter' : 'Activer'}
+                </button>
+              </div>
+
+              {faceError && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{faceError}</div>
+              )}
+              {faceMessage && (
+                <div className="mb-3 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">{faceMessage}</div>
+              )}
+
+              <div className="space-y-3">
+                <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                  <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={!faceMode || faceLoading}
+                    onClick={async () => {
+                      setFaceError("");
+                      setFaceMessage("");
+                      if (!videoRef.current) return;
+                      try {
+                        setFaceLoading(true);
+                        const emb = await computeEmbeddingFromVideo(videoRef.current, 30, 150);
+                        if (!emb) {
+                          setFaceError('Visage non détecté. Essayez avec une meilleure luminosité.');
+                          return;
+                        }
+                        setEmbedding(emb);
+                        setFaceMessage('Visage détecté. Tentative de connexion…');
+                        // Call face login API
+                        const res = await fetch('/api/auth/face-login', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ embedding: emb }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.success) {
+                          setFaceError(data.error || 'Échec de la connexion par visage');
+                          return;
+                        }
+                        setSuccess('Connexion réussie! Redirection...');
+                        setTimeout(() => {
+                          window.location.href = '/profile?onboarding=1';
+                        }, 800);
+                      } catch (e) {
+                        console.error('Face login error', e);
+                        setFaceError('Erreur durant la connexion par visage');
+                      } finally {
+                        setFaceLoading(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-50"
+                  >
+                    {faceLoading ? 'Analyse…' : 'Se connecter avec le visage'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (videoRef.current) stopCamera(videoRef.current);
+                      setFaceMode(false);
+                      setEmbedding(null);
+                      setFaceMessage('Caméra arrêtée');
+                    }}
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

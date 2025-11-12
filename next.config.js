@@ -37,6 +37,23 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Avoid attempting to polyfill Node modules in browser bundles
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        fs: false,
+        path: false,
+        stream: false,
+      };
+      // Stub problematic optional deps used by face-api.js
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        encoding: false,
+      };
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;

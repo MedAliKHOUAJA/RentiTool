@@ -69,17 +69,24 @@ export async function GET(request: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     
     // Récupérer l'image de profil depuis la base de données
-    const result = await db.query(
-      `SELECT "ProfileImage" FROM "User" WHERE "userId" = $1`,
-      [decoded.userId]
-    );
-    
-    const profileImage = result.rows[0]?.ProfileImage;
-    
-    return NextResponse.json({ 
-      success: true,
-      image: profileImage || null
-    });
+    try {
+      const result = await db.query(
+        `SELECT "ProfileImage" FROM "User" WHERE "userId" = $1`,
+        [decoded.userId]
+      );
+      const profileImage = result.rows[0]?.ProfileImage;
+      return NextResponse.json({ 
+        success: true,
+        image: profileImage || null
+      });
+    } catch (dbError: any) {
+      // Si la colonne n'existe pas, renvoyer une image nulle au lieu d'un 500
+      if (dbError?.code === '42703') {
+        console.warn('⚠️ Colonne "ProfileImage" absente, retour image null');
+        return NextResponse.json({ success: true, image: null });
+      }
+      throw dbError;
+    }
 
   } catch (error) {
     console.error('❌ Erreur récupération image:', error);
