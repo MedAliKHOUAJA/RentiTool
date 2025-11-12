@@ -41,12 +41,16 @@ export default function LoginPage() {
       const data = await response.json();
       console.log('📨 Réponse API login:', data);
 
-      if (response.ok && data.success) {
-        console.log('✅ Connexion réussie! Redirection vers /profile');
-        console.log('👤 Utilisateur connecté:', data.user);
-        
-      
-      router.push('/')
+// Dans votre login page.tsx
+if (response.ok && data.success) {
+  console.log('✅ Connexion réussie! Redirection vers /');
+  console.log('👤 Utilisateur connecté:', data.user);
+  
+
+  setTimeout(() => {
+  window.location.href = '/';
+  }, 100);
+
         
       } else {
         console.log('❌ Erreur connexion:', data.error);

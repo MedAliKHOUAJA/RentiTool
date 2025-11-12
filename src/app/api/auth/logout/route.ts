@@ -1,15 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    // ✅ Créer une réponse de succès
-    const response = NextResponse.json(
-      { message: 'Logged out successfully' },
-      { status: 200 }
-    );
-
-    // ✅ Supprimer les cookies d'authentification
-    response.cookies.set('authToken', '', {
+    console.log('🔄 Tentative de déconnexion...');
+    
+    // Récupérer les cookies
+    const cookieStore = await cookies();
+    
+    // Créer la réponse
+    const response = NextResponse.json({ 
+      success: true, 
+      message: 'Déconnexion réussie' 
+    });
+    
+    // Supprimer le cookie auth_token
+    response.cookies.set('auth_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -17,19 +23,17 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    response.cookies.set('refreshToken', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    });
-
+    console.log('✅ Déconnexion réussie');
+    
     return response;
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error('💥 Erreur lors de la déconnexion:', error);
+    
     return NextResponse.json(
-      { error: 'Failed to logout' },
+      { 
+        success: false, 
+        error: 'Erreur lors de la déconnexion' 
+      },
       { status: 500 }
     );
   }
