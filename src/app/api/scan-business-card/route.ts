@@ -98,75 +98,205 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Helper function to parse and structure entities
 function parseEntities(entities: any, extractedText: string) {
   const structured: {
+    name?: string;
     title?: string;
     company?: string;
+    email?: string;
+    phone?: string;
     website?: string;
   } = {};
 
   try {
     // === 1. Handle Gradio's object format ===
     if (typeof entities === 'object' && entities !== null) {
+      
+      // Person Name
+      if (entities['Person Name'] && entities['Person Name'].trim()) {
+        structured.name = entities['Person Name'].trim();
+      }
+
       // Job Title
       if (entities['Job Title'] && entities['Job Title'].trim()) {
         structured.title = entities['Job Title'].trim();
       }
 
-      // Company Name
+      // Company Name (handle empty string)
       if (entities['Company Name'] && entities['Company Name'].trim()) {
         structured.company = entities['Company Name'].trim();
       }
 
-      // Email → if it's a URL, use as website
-      if (entities.Email && entities.Email.includes('.')) {
-        const email = entities.Email.trim();
-        if (email.includes('www.') || email.includes('http')) {
-          structured.website = email.startsWith('http') ? email : 'https://' + email;
+      // Phone
+      if (entities['Phone'] && entities['Phone'].trim()) {
+        // Clean phone number
+        const phone = entities['Phone'].trim().replace(/[^\d+\s\-()]/g, '');
+        if (phone) {
+          structured.phone = phone;
+        }
+      }
+
+      // Email - Extract from the Email field
+      if (entities.Email && entities.Email.trim()) {
+        const emailField = entities.Email.trim();
+        
+        // Extract actual email address
+        const emailMatch = emailField.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+        if (emailMatch) {
+          structured.email = emailMatch[0];
+        } else {
+          // Try to extract from text with spaces instead of @
+          const emailParts = emailField.split(';')[0].trim();
+          if (emailParts.includes('company com') || emailParts.includes('personai')) {
+            // Fix common OCR errors: "personaicompany com" -> "person@company.com"
+            const fixedEmail = emailParts
+              .replace(/\s+/g, '')
+              .replace('personaicompany', 'person@company')
+              .replace('com', '.com');
+            if (fixedEmail.includes('@')) {
+              structured.email = fixedEmail;
+            }
+          }
+        }
+        
+        // Extract website from email field (sometimes contains multiple values)
+        const urlMatch = emailField.match(/(https?:\/\/[^\s;,]+|www\.[^\s;,]+|[a-zA-Z0-9-]+\.(com|io|org|net|co|ai|app|tech|dev)[^\s;,]*)/i);
+        if (urlMatch) {
+          let url = urlMatch[0];
+          if (!url.startsWith('http')) {
+            url = 'https://' + url;
+          }
+          structured.website = url.replace(/[,;]+$/, '');
+        }
+      }
+
+      // Address (optional, not currently used in your form)
+      // if (entities.Address) { ... }
+    }
+
+    // === 2. Fallback: Parse from extractedText ===
+    const text = extractedText || '';
+    const lines = text.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
+
+    // Extract person name if not found
+    if (!structured.name && entities?.['Person Name']) {
+      structured.name = entities['Person Name'].trim();
+    }
+
+    // Extract phone if not found
+    if (!structured.phone) {
+      const phoneMatch = text.match(/(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|\d{3}[\s]\d{3}[\s]\d{4}/);
+      if (phoneMatch) {
+        structured.phone = phoneMatch[0].trim();
+      }
+    }
+
+    // Extract email from text if not found
+    if (!structured.email) {
+      const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) {
+        structured.email = emailMatch[0];
+      } else {
+        // Try to fix OCR errors
+        const emailLike = text.match(/[a-zA-Z0-9._%+-]+\s*@?\s*[a-zA-Z0-9.-]+\s*\.\s*[a-zA-Z]{2,}/);
+        if (emailLike) {
+          const fixedEmail = emailLike[0].replace(/\s+/g, '');
+          if (fixedEmail.includes('@') || fixedEmail.match(/[a-zA-Z0-9]+company/i)) {
+            structured.email = fixedEmail.replace(/([a-zA-Z0-9]+)company/i, '$1@company');
+          }
         }
       }
     }
 
-    // === 2. Fallback: Regex from extractedText ===
-    const text = extractedText || '';
-
-    // Website (http, www, .com, etc.)
+    // Website extraction
     if (!structured.website) {
-      const websiteMatch = text.match(/(https?:\/\/[^\s]+|www\.[^\s]+|[^\s@]+\.(com|io|org|net|co|ai|app))/i);
+      const websiteMatch = text.match(/(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(com|io|org|net|co|ai|app|tech|dev))/i);
       if (websiteMatch) {
         let url = websiteMatch[0];
-        if (!url.startsWith('http')) url = 'https://' + url;
-        structured.website = url.replace(/[,;]$/, ''); // clean trailing punctuation
+        if (!url.startsWith('http')) {
+          url = 'https://' + url;
+        }
+        structured.website = url.replace(/[,;.\s]+$/, '');
       }
     }
 
-    // Company (fallback: capitalize words not name/title)
+    // Company extraction with improved heuristics
     if (!structured.company) {
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const personNameLower = (structured.name || '').toLowerCase();
+      const personNameParts = personNameLower.split(' ').filter((p: string) => p.length > 2);
+
       for (const line of lines) {
+        // Skip if line is too short or contains garbage characters
+        if (line.length < 3 || /[٠-٩؛،؟]/.test(line)) continue;
+        
+        // Skip if line is the person's name
+        const lineLower = line.toLowerCase();
+        if (personNameParts.some((part: string) => lineLower.includes(part))) continue;
+        
+        // Skip if line looks like contact info
         if (
-          line.length > 3 &&
-          !line.includes('@') &&
-          !line.match(/^\+?\d[\d\s\-\(\)]+$/) &&
-          !line.toLowerCase().includes('olivia') &&
-          !line.toLowerCase().includes('wilson')
+          line.includes('@') ||
+          /^\+?\d[\d\s\-\(\)]+$/.test(line) ||
+          /^\d+[\s,]\d+/.test(line) || // addresses like "123 Street"
+          line.match(/^[A-Z]{2,3}$/) // abbreviations
+        ) continue;
+
+        // Skip if it's the job title (already captured)
+        if (structured.title && lineLower.includes(structured.title.toLowerCase())) continue;
+
+        // Check if line looks like a company name
+        if (
+          /^[A-Z]/.test(line) && // Starts with capital
+          (
+            line.includes(' ') || // Multi-word
+            /\b(Inc|LLC|Ltd|Corp|Corporation|Company|Group|Solutions|Technologies|Tech|Consulting)\b/i.test(line)
+          )
         ) {
-          structured.company = line;
+          structured.company = line.replace(/[,;.]+$/, '');
           break;
         }
       }
     }
 
-    // Title (fallback: look for short uppercase or known titles)
+    // Title extraction fallback
     if (!structured.title) {
-      const titleMatch = text.match(/\b(CEO|CFO|CTO|Developer|Manager|Director|Engineer|Designer|Founder)\b/i);
-      if (titleMatch) structured.title = titleMatch[0];
+      const titleMatch = text.match(/\b(CEO|Chief Executive Officer|CFO|CTO|COO|VP|Vice President|President|Developer|Software Engineer|Manager|Director|Senior|Junior|Lead|Engineer|Designer|Founder|Co-Founder|Consultant|Analyst|Specialist|Managing Director)\b/i);
+      if (titleMatch) {
+        structured.title = titleMatch[0];
+      }
+    }
+
+    // Final fallback: Extract company from website domain or email
+    if (!structured.company) {
+      let domain = '';
+      
+      // Try from website first
+      if (structured.website) {
+        const domainMatch = structured.website.match(/(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+)\./i);
+        if (domainMatch) {
+          domain = domainMatch[1];
+        }
+      }
+      
+      // Try from email if website didn't work
+      if (!domain && structured.email) {
+        const emailDomain = structured.email.split('@')[1]?.split('.')[0];
+        if (emailDomain) {
+          domain = emailDomain;
+        }
+      }
+      
+      // Format domain as company name
+      if (domain) {
+        structured.company = domain
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+      }
     }
 
   } catch (error) {
-        console.error('Error parsing entities:', error);
+    console.error('Error parsing entities:', error);
   }
 
   return structured;

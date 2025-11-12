@@ -1,7 +1,16 @@
-
+// src/features/Cards/schemas/Cards.ts
 import { z } from 'zod';
 
 export const createCardSchema = z.object({
+  // User fields (optional, prefilled, modifiable)
+  firstName: z.string().min(1, 'Le prénom est requis').optional(),
+  lastName: z.string().min(1, 'Le nom de famille est requis').optional(),
+  email: z.string().email('Email invalide').optional(),
+  phone: z.string().optional().refine((val) => !val || /^\d{8}$/.test(val), 'Téléphone invalide (8 chiffres)'),
+  
+  // ✅ REMOVED: governorate, delegation, postalcode - not part of card creation
+
+  // Card fields
   jobTitle: z.string().min(1, 'Le titre professionnel est requis'),
   companyName: z.string().min(1, "Le nom de l'entreprise est requis"),
   webSite: z.string().url().optional().or(z.literal('')),
@@ -53,16 +62,10 @@ export const createCardSchema = z.object({
         path: ['companyLogo'],
       }
     ),
-}).refine((data) => {
-  return true;
-}, {
-  message: 'Validation failed',
-  path: ['general'],
 });
 
 export type CreateCardFormData = z.infer<typeof createCardSchema>;
 
-// ✅ NEW: Schema for updating tags only
 export const updateCardTagsSchema = z.object({
   tags: z.array(z.string()).optional(),
   specialties: z.array(z.string()).optional(),

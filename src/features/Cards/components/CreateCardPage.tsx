@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,8 +9,6 @@ import { createCard, getCurrentUser } from '@/features/Cards/actions/Cards';
 import { useCardAI } from '@/features/Cards/hooks/useCardAI';
 import toast from 'react-hot-toast';
 import { Sparkles, Check, Scan } from 'lucide-react';
-import { useCallback } from 'react'; 
-// NEW IMPORTS
 import { BusinessCardScanner } from '@/features/Cards/components/BusinessCardScanner';
 
 interface User {
@@ -22,6 +20,7 @@ interface User {
   Governorate?: string;
   Delegation?: string;
   Postalcode?: number;
+  LocationId?: number;
 }
 
 async function action(formData: FormData) {
@@ -45,6 +44,10 @@ const CreateCardPage = () => {
     resolver: zodResolver(createCardSchema),
     mode: 'onChange',
     defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
       jobTitle: '',
       companyName: '',
       webSite: '',
@@ -60,8 +63,6 @@ const CreateCardPage = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [enrichmentApplied, setEnrichmentApplied] = useState(false);
   const [specialties, setSpecialties] = useState<string[]>([]);
-
-  // NEW STATE
   const [scannerOpen, setScannerOpen] = useState(false);
 
   // Watch form fields
@@ -76,6 +77,11 @@ const CreateCardPage = () => {
         const data = await getCurrentUser();
         if (data) {
           setUser(data);
+          // Prefill form with user data (users can modify if desired)
+          setValue('firstName', data.FirstName || '');
+          setValue('lastName', data.LastName || '');
+          setValue('email', data.Email || '');
+          setValue('phone', data.Phone ? data.Phone.toString() : '');
         } else {
           setError('Utilisateur non trouvé');
         }
@@ -90,7 +96,7 @@ const CreateCardPage = () => {
       }
     };
     fetchUser();
-  }, [router]);
+  }, [router, setValue]);
 
   // File previews
   useEffect(() => {
@@ -109,7 +115,6 @@ const CreateCardPage = () => {
     }
   }, [companyLogo]);
 
-  // FIXED: handleEnrichment - safe handling of undefined values
   const handleEnrichment = async () => {
     if (!jobTitle || !companyName) {
       toast.error('Veuillez remplir le titre professionnel et le nom de l\'entreprise');
@@ -118,8 +123,8 @@ const CreateCardPage = () => {
 
     try {
       const result = await enrichCard({
-        FirstName: user?.FirstName,
-        LastName: user?.LastName,
+        FirstName: watch('firstName') || user?.FirstName,
+        LastName: watch('lastName') || user?.LastName,
         JobTitle: jobTitle,
         CompanyName: companyName,
         SpecialtiesAndExpertise: specialties,
@@ -139,63 +144,56 @@ const CreateCardPage = () => {
     }
   };
 
-  // NEW HANDLER
-const handleScannedData = useCallback((data: any) => {
-  console.log('📥 CreateCard: handleScannedData received:', JSON.stringify(data, null, 2));
-  console.log('📥 CreateCard: Entities object:', data.entities);
+  const handleScannedData = useCallback((data: any) => {
+    console.log('📥 CreateCard: handleScannedData received:', JSON.stringify(data, null, 2));
+    const e = data.entities || {};
+    let fieldsSet = 0;
 
-  const e = data.entities || {};
-  let fieldsSet = 0;
+    if (e.name && e.name.trim()) {
+      const fullName = e.name.trim().split(' ');
+      if (fullName.length >= 2) {
+        setValue('firstName', fullName[0], { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+        setValue('lastName', fullName.slice(1).join(' '), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+        fieldsSet++;
+        toast.success('Nom extrait !');
+      }
+    }
 
-  // Set job title (from 'title' field)
-  if (e.title && e.title.trim()) {
-    console.log('✏️ CreateCard: Setting jobTitle:', e.title);
-    setValue('jobTitle', e.title.trim(), { 
-      shouldValidate: true, 
-      shouldDirty: true,
-      shouldTouch: true 
-    });
-    fieldsSet++;
-    toast.success('Titre professionnel extrait !');
-  } else {
-    console.log('⚠️ CreateCard: No title found in entities');
-  }
+    if (e.email && e.email.trim()) {
+      setValue('email', e.email.trim(), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      fieldsSet++;
+      toast.success('Email extrait !');
+    }
 
-  // Set company name (from 'company' field)
-  if (e.company && e.company.trim()) {
-    console.log('🏢 CreateCard: Setting companyName:', e.company);
-    setValue('companyName', e.company.trim(), { 
-      shouldValidate: true, 
-      shouldDirty: true,
-      shouldTouch: true 
-    });
-    fieldsSet++;
-    toast.success('Nom de l\'entreprise extrait !');
-  } else {
-    console.log('⚠️ CreateCard: No company found in entities');
-  }
+    if (e.phone && e.phone.trim()) {
+      setValue('phone', e.phone.trim(), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      fieldsSet++;
+      toast.success('Téléphone extrait !');
+    }
 
-  // Set website (from 'website' field)
-  if (e.website && e.website.trim()) {
-    console.log('🌐 CreateCard: Setting webSite:', e.website);
-    setValue('webSite', e.website.trim(), { 
-      shouldValidate: true, 
-      shouldDirty: true,
-      shouldTouch: true 
-    });
-    fieldsSet++;
-    toast.success('Site web extrait !');
-  } else {
-    console.log('⚠️ CreateCard: No website found in entities');
-  }
+    if (e.title && e.title.trim()) {
+      setValue('jobTitle', e.title.trim(), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      fieldsSet++;
+      toast.success('Titre professionnel extrait !');
+    }
 
-  if (fieldsSet === 0) {
-    console.warn('⚠️ CreateCard: No fields were extracted from the scan');
-    toast.error('Aucune donnée n\'a pu être extraite de la carte. Veuillez réessayer avec une image plus claire.');
-  } else {
-    console.log(`✅ CreateCard: Successfully set ${fieldsSet} field(s)`);
-  }
-}, [setValue]);
+    if (e.company && e.company.trim()) {
+      setValue('companyName', e.company.trim(), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      fieldsSet++;
+      toast.success('Nom de l\'entreprise extrait !');
+    }
+
+    if (e.website && e.website.trim()) {
+      setValue('webSite', e.website.trim(), { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      fieldsSet++;
+      toast.success('Site web extrait !');
+    }
+
+    if (fieldsSet === 0) {
+      console.warn('⚠️ CreateCard: No fields were extracted from the scan');
+      toast.error('Aucune donnée n\'a pu être extraite de la carte. Veuillez réessayer avec une image plus claire.');
+    }
+  }, [setValue]);
 
   const onSubmit = async (data: CreateCardFormData) => {
     console.log('onSubmit triggered with data:', data);
@@ -203,6 +201,10 @@ const handleScannedData = useCallback((data: any) => {
 
     const formData = new FormData();
     formData.append('userId', user.userId);
+    formData.append('firstName', data.firstName || '');
+    formData.append('lastName', data.lastName || '');
+    formData.append('email', data.email || '');
+    formData.append('phone', data.phone || '');
     formData.append('jobTitle', data.jobTitle);
     formData.append('companyName', data.companyName);
     formData.append('webSite', data.webSite || '');
@@ -213,12 +215,10 @@ const handleScannedData = useCallback((data: any) => {
 
     if (data.profilePicture instanceof File) {
       formData.append('profilePicture', data.profilePicture);
-      console.log('Profile picture added:', data.profilePicture.name);
     }
 
     if (data.companyLogo instanceof File) {
       formData.append('companyLogo', data.companyLogo);
-      console.log('Company logo added:', data.companyLogo.name);
     }
 
     try {
@@ -226,8 +226,7 @@ const handleScannedData = useCallback((data: any) => {
       toast.success('Carte créée avec succès !');
       router.push('/account/cards');
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Une erreur inconnue s\'est produite';
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur inconnue s\'est produite';
       console.error('Submission error:', err);
       toast.error(errorMessage);
       setError(errorMessage);
@@ -272,12 +271,7 @@ const handleScannedData = useCallback((data: any) => {
             className="p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
             aria-label="Retour"
           >
-            <svg
-              className="w-6 h-6 text-gray-700 dark:text-gray-200"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
@@ -286,7 +280,7 @@ const handleScannedData = useCallback((data: any) => {
       </div>
 
       <div className="p-4 pb-24 max-w-2xl mx-auto">
-        {/* NEW SCANNER BUTTON (right after the opening div) */}
+        {/* Scanner Button */}
         <div className="mb-4">
           <button
             type="button"
@@ -301,29 +295,69 @@ const handleScannedData = useCallback((data: any) => {
           </p>
         </div>
 
-        {/* User Info Card */}
-        <details className="mb-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary className="p-4 cursor-pointer select-none font-medium text-gray-900 dark:text-gray-100 flex items-center justify-between active:bg-gray-50 dark:active:bg-gray-700">
-            <span>Informations de l'Utilisateur</span>
-            <svg className="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </summary>
-          <div className="px-4 pb-4 space-y-2 text-sm">
-            <p className="text-gray-700 dark:text-gray-300">
-              <span className="font-medium">Nom:</span> {user.FirstName} {user.LastName}
-            </p>
-            <p className="text-gray-700 dark:text-gray-300">
-              <span className="font-medium">Email:</span> {user.Email}
-            </p>
-            <p className="text-gray-700 dark:text-gray-300">
-              <span className="font-medium">Téléphone:</span> {user.Phone || 'Non fourni'}
-            </p>
-            <p className="text-gray-700 dark:text-gray-300">
-              <span className="font-medium">Adresse:</span> {user.Governorate || 'N/A'}, {user.Delegation || 'N/A'}, {user.Postalcode || 'N/A'}
-            </p>
+        {/* User Info Section - Editable */}
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            Informations Personnelles
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Prénom</label>
+              <input
+                {...register('firstName')}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isSubmitting}
+                placeholder="Votre prénom"
+              />
+              {errors.firstName && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-2">{getErrorMessage(errors.firstName)}</p>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Nom de Famille</label>
+              <input
+                {...register('lastName')}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isSubmitting}
+                placeholder="Votre nom de famille"
+              />
+              {errors.lastName && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-2">{getErrorMessage(errors.lastName)}</p>
+              )}
+            </div>
           </div>
-        </details>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Email</label>
+              <input
+                {...register('email')}
+                type="email"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isSubmitting}
+                placeholder="votre@email.com"
+              />
+              {errors.email && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-2">{getErrorMessage(errors.email)}</p>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Téléphone</label>
+              <input
+                {...register('phone')}
+                type="tel"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isSubmitting}
+                placeholder="0123456789"
+              />
+              {errors.phone && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-2">{getErrorMessage(errors.phone)}</p>
+              )}
+            </div>
+          </div>
+        </div>
 
         {error && (
           <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -345,7 +379,7 @@ const handleScannedData = useCallback((data: any) => {
             </label>
             <input
               {...register('jobTitle')}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               disabled={isSubmitting}
               placeholder="Ex: Développeur Full Stack"
             />
@@ -361,7 +395,7 @@ const handleScannedData = useCallback((data: any) => {
             </label>
             <input
               {...register('companyName')}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               disabled={isSubmitting}
               placeholder="Ex: TechCorp Solutions"
             />
@@ -413,7 +447,6 @@ const handleScannedData = useCallback((data: any) => {
                 )}
               </button>
 
-              {/* Show enrichment results */}
               {enrichmentApplied && specialties.length > 0 && (
                 <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg">
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Spécialités suggérées:</p>
@@ -439,7 +472,7 @@ const handleScannedData = useCallback((data: any) => {
               {...register('webSite')}
               type="url"
               inputMode="url"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               disabled={isSubmitting}
               placeholder="https://www.exemple.com"
             />
@@ -466,23 +499,12 @@ const handleScannedData = useCallback((data: any) => {
                       disabled={isSubmitting}
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null;
-                        console.log('Profile picture selected:', file?.name);
                         onChange(file);
                       }}
                     />
                     <div className="text-center">
-                      <svg
-                        className="w-10 h-10 mx-auto mb-2 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
+                      <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <span className="text-sm text-blue-500 dark:text-blue-400 font-medium">
                         {profilePicture instanceof File ? 'Changer la photo' : 'Ajouter une photo'}
@@ -491,11 +513,7 @@ const handleScannedData = useCallback((data: any) => {
                   </label>
                   {profilePreview && (
                     <div className="mt-3 flex justify-center">
-                      <img
-                        src={profilePreview}
-                        alt="Aperçu"
-                        className="w-24 h-24 object-cover rounded-full border-2 border-blue-500 dark:border-blue-400"
-                      />
+                      <img src={profilePreview} alt="Aperçu" className="w-24 h-24 object-cover rounded-full border-2 border-blue-500 dark:border-blue-400" />
                     </div>
                   )}
                 </div>
@@ -524,23 +542,12 @@ const handleScannedData = useCallback((data: any) => {
                       disabled={isSubmitting}
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null;
-                        console.log('Company logo selected:', file?.name);
                         onChange(file);
                       }}
                     />
                     <div className="text-center">
-                      <svg
-                        className="w-10 h-10 mx-auto mb-2 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                        />
+                      <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
                       <span className="text-sm text-blue-500 dark:text-blue-400 font-medium">
                         {companyLogo instanceof File ? 'Changer le logo' : 'Ajouter un logo'}
@@ -549,11 +556,7 @@ const handleScannedData = useCallback((data: any) => {
                   </label>
                   {logoPreview && (
                     <div className="mt-3 flex justify-center">
-                      <img
-                        src={logoPreview}
-                        alt="Aperçu"
-                        className="w-24 h-24 object-contain rounded-lg border-2 border-blue-500 dark:border-blue-400"
-                      />
+                      <img src={logoPreview} alt="Aperçu" className="w-24 h-24 object-contain rounded-lg border-2 border-blue-500 dark:border-blue-400" />
                     </div>
                   )}
                 </div>
@@ -566,13 +569,12 @@ const handleScannedData = useCallback((data: any) => {
         </form>
       </div>
 
-      {/* NEW SCANNER MODAL */}
+      {/* Scanner Modal */}
       <BusinessCardScanner
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onDataExtracted={handleScannedData}
       />
-
       {/* Bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 pb-20 safe-area-inset-bottom">
         <div className="max-w-2xl mx-auto flex gap-3">
@@ -586,6 +588,7 @@ const handleScannedData = useCallback((data: any) => {
           </button>
           <button
             type="submit"
+            form="create-card-form" // Add id to form if needed, but since handleSubmit, use onClick
             onClick={handleSubmit(onSubmit)}
             className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-base ${
               isSubmitting

@@ -6,7 +6,7 @@ import { db } from '@/app/api/cards/db';
 import { getCurrentUserId } from '@/lib/auth-jwt-server';
 import { z } from 'zod';
 
-// ✅ NEW: Get current logged-in user
+// ✅ Get current logged-in user
 export async function getCurrentUser() {
   try {
     const userId = await getCurrentUserId();
@@ -32,7 +32,7 @@ export async function getCurrentUser() {
   }
 }
 
-// ✅ UPDATED: createCard now saves specialties
+// ✅ FIXED: createCard - NO location handling at all
 export async function createCard(formData: FormData) {
   try {
     const userId = await getCurrentUserId();
@@ -40,7 +40,13 @@ export async function createCard(formData: FormData) {
     const formDataObj = Object.fromEntries(formData);
     console.log('Received formData:', formDataObj);
 
+    // ✅ Parse data WITHOUT address fields
     const data = createCardSchema.parse({
+      firstName: formData.get('firstName') as string | null,
+      lastName: formData.get('lastName') as string | null,
+      email: formData.get('email') as string | null,
+      phone: formData.get('phone') as string | null,
+      // ✅ REMOVED: governorate, delegation, postalcode
       jobTitle: formData.get('jobTitle') as string,
       companyName: formData.get('companyName') as string,
       webSite: formData.get('webSite') as string | null,
@@ -48,10 +54,42 @@ export async function createCard(formData: FormData) {
       companyLogo: formData.get('companyLogo') as File | null,
     });
 
+    // ✅ Update User if fields provided and non-empty (NO location update)
+    let updateUserFields = [];
+    let userParams: any[] = [userId];
+    let userParamIndex = 2;
+
+    if (data.firstName && data.firstName.trim()) {
+      updateUserFields.push(`"FirstName" = $${userParamIndex++}`);
+      userParams.push(data.firstName.trim());
+    }
+    if (data.lastName && data.lastName.trim()) {
+      updateUserFields.push(`"LastName" = $${userParamIndex++}`);
+      userParams.push(data.lastName.trim());
+    }
+    if (data.email && data.email.trim()) {
+      updateUserFields.push(`"Email" = $${userParamIndex++}`);
+      userParams.push(data.email.trim());
+    }
+    if (data.phone && data.phone.trim()) {
+      updateUserFields.push(`"Phone" = $${userParamIndex++}`);
+      userParams.push(parseInt(data.phone.trim(), 10));
+    }
+
+    if (updateUserFields.length > 0) {
+      await db.query(
+        `UPDATE public."User" SET ${updateUserFields.join(', ')} WHERE "userId" = $1`,
+        userParams
+      );
+    }
+
+    // ✅ REMOVED: All location handling - LocationId stays unchanged
+
     // ✅ Get specialties from formData (AI-enriched)
     const specialtiesRaw = formData.get('specialties') as string | null;
     const specialties = specialtiesRaw ? JSON.parse(specialtiesRaw) : [];
 
+    // ✅ Create Business Card
     const cardResult = await db.query(
       `INSERT INTO public."BusinessCards" (
         "UserId", "JobTitle", "CompanyName", "WebSite", "CreatedAt", "UpdatedAt", 
@@ -65,17 +103,18 @@ export async function createCard(formData: FormData) {
         data.webSite || null,
         null,
         null,
-        specialties.length > 0 ? JSON.stringify(specialties) : null, // ✅ Save specialties as JSONB
-        null, // Tags will be added later by user
+        specialties.length > 0 ? JSON.stringify(specialties) : null,
+        null,
       ]
     );
 
     if (cardResult.rowCount !== 1) {
-      return { success: false, error: 'Échec de linsertion dans la base de données' };
+      return { success: false, error: 'Échec de l\'insertion dans la base de données' };
     }
 
     const cardId = cardResult.rows[0].CardId;
 
+    // ✅ Handle images
     if (data.profilePicture) {
       const buffer = Buffer.from(await data.profilePicture.arrayBuffer());
       await db.query(
@@ -110,7 +149,7 @@ export async function createCard(formData: FormData) {
   }
 }
 
-// ✅ UPDATED: updateCard now supports Tags and Specialties
+// ✅ updateCard - supports Tags and Specialties
 export async function updateCard(
   cardId: number,
   formData: FormData | { tags?: string[]; specialties?: string[] }
@@ -118,7 +157,6 @@ export async function updateCard(
   try {
     const currentUserId = await getCurrentUserId();
 
-    // ✅ Verify user owns this card
     const ownerCheck = await db.query(
       `SELECT "UserId" FROM public."BusinessCards" WHERE "CardId" = $1`,
       [cardId]
@@ -134,11 +172,9 @@ export async function updateCard(
       return { success: false, error: 'Non autorisé à modifier cette carte' };
     }
 
-    // ✅ Handle both FormData and JSON object inputs
     let jobTitle, companyName, webSite, profilePicture, companyLogo, tags, specialties;
 
     if (formData instanceof FormData) {
-      // Traditional form update (for card details)
       const data = createCardSchema.parse({
         jobTitle: formData.get('jobTitle') as string,
         companyName: formData.get('companyName') as string,
@@ -153,12 +189,10 @@ export async function updateCard(
       profilePicture = data.profilePicture;
       companyLogo = data.companyLogo;
     } else {
-      // JSON object update (for tags/specialties only)
       tags = formData.tags;
       specialties = formData.specialties;
     }
 
-    // ✅ Build dynamic UPDATE query
     let updateFields = ['"UpdatedAt" = NOW()'];
     let params: any[] = [];
     let paramIndex = 1;
@@ -188,7 +222,6 @@ export async function updateCard(
       params.push(JSON.stringify(tags));
     }
 
-    // Add cardId as final parameter
     params.push(cardId);
 
     const cardResult = await db.query(
@@ -203,7 +236,6 @@ export async function updateCard(
       return { success: false, error: 'Carte non trouvée ou échec de la mise à jour' };
     }
 
-    // ✅ Handle image updates only if FormData
     if (formData instanceof FormData) {
       if (profilePicture) {
         const buffer = Buffer.from(await profilePicture.arrayBuffer());
@@ -248,12 +280,10 @@ export async function updateCard(
   }
 }
 
-// ✅ UPDATED: Delete card (unchanged, but kept for reference)
 export async function deleteCard(cardId: number) {
   try {
     const currentUserId = await getCurrentUserId();
 
-    // ✅ Verify user owns this card
     const ownerCheck = await db.query(
       `SELECT "UserId" FROM public."BusinessCards" WHERE "CardId" = $1`,
       [cardId]
@@ -304,7 +334,6 @@ export async function getUserById(userId: string) {
   }
 }
 
-// ✅ UPDATED: Get cards now includes Tags and Specialties
 export async function getCardsByUserId(userId?: string) {
   try {
     const targetUserId = userId || (await getCurrentUserId());
@@ -357,7 +386,6 @@ export async function getCardById(cardId: number) {
   }
 }
 
-// ✅ UPDATED: Save shared card (unchanged)
 export async function saveSharedCard(cardId: number, notes?: string) {
   try {
     const userId = await getCurrentUserId();
@@ -383,7 +411,6 @@ export async function saveSharedCard(cardId: number, notes?: string) {
   }
 }
 
-// ✅ UPDATED: Get saved cards now includes Tags and Specialties
 export async function getSavedCardsByUserId(userId?: string) {
   try {
     const targetUserId = userId || (await getCurrentUserId());

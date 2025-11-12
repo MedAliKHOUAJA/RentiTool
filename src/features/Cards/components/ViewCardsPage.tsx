@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   getCardsByUserId,
@@ -14,6 +14,21 @@ import { Card } from '@/features/Cards/types';
 import toast from 'react-hot-toast';
 import { Edit2, Trash2, Eye, Plus, Tag, Sparkles, X } from 'lucide-react';
 
+// Helper: Parse tags safely (JSON string -> array, or fallback to empty array)
+const parseTags = (tagsValue: any): string[] => {
+  if (!tagsValue) return [];
+  if (Array.isArray(tagsValue)) return tagsValue;
+  if (typeof tagsValue === 'string') {
+    try {
+      return JSON.parse(tagsValue);
+    } catch (e) {
+      console.warn('Failed to parse tags JSON:', tagsValue);
+      return [];
+    }
+  }
+  return [];
+};
+
 // SmartTaggingUI Component
 const SmartTaggingUI = ({ 
   card, 
@@ -25,7 +40,7 @@ const SmartTaggingUI = ({
   onClose: () => void;
 }) => {
   const { getTags, tagsLoading } = useCardAI();
-  const [tags, setTags] = useState<string[]>(card.Tags || []);
+  const [tags, setTags] = useState<string[]>(parseTags(card.Tags)); // ✅ Fixed: Always parse to array
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -33,10 +48,14 @@ const SmartTaggingUI = ({
   const handleSuggestTags = async () => {
     try {
       const suggestedTags = await getTags(card);
-      setTags(suggestedTags);
-      setShowTagSuggestions(true);
-      setIsEditing(true); // Auto-enable editing after suggestion
-      toast.success('Tags suggérés par IA !');
+      if (suggestedTags.length > 0) {
+        setTags(suggestedTags);
+        setShowTagSuggestions(true);
+        setIsEditing(true); // Auto-enable editing after suggestion
+        toast.success('Tags suggérés par IA !');
+      } else {
+        toast.error('Aucune suggestion de tags générée.');
+      }
     } catch (error) {
       console.error('Tagging failed:', error);
       toast.error('Erreur lors de la suggestion des tags');
@@ -188,7 +207,7 @@ const SmartTaggingUI = ({
           <button
             onClick={() => {
               setIsEditing(false);
-              setTags(card.Tags || []);
+              setTags(parseTags(card.Tags)); // ✅ Reset to parsed original
             }}
             disabled={isSaving}
             className="flex-1 text-xs px-3 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors font-medium disabled:opacity-50"
@@ -298,13 +317,13 @@ const ViewCardsPage = () => {
     router.push(`/account/cards/details/${cardId}`);
   };
 
-  const handleTagsUpdate = (cardId: number, newTags: string[]) => {
-    setCards(
-      cards.map((card) =>
-        card.CardId === cardId ? { ...card, Tags: newTags } : card
+  const handleTagsUpdate = useCallback((cardId: number, newTags: string[]) => {
+    setCards((prevCards) =>
+      prevCards.map((card) =>
+        card.CardId === cardId ? { ...card, Tags: newTags } : card // Store as array; action will JSON.stringify
       )
     );
-  };
+  }, []);
 
   const cardColors = [
     'from-blue-600 to-indigo-700',
@@ -390,6 +409,8 @@ const ViewCardsPage = () => {
             const gradient = cardColors[index % cardColors.length];
             const isOwnCard = ownCardIds.has(card.CardId);
             const isTagsExpanded = expandedTagsCard === card.CardId;
+            const parsedTags = parseTags(card.Tags); // ✅ Parse for button logic
+            const hasTags = parsedTags.length > 0;
 
             return (
               <div key={card.CardId} className="group relative">
@@ -403,7 +424,7 @@ const ViewCardsPage = () => {
                 )}
 
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700">
-                  {/* Gradient Header - REMOVED onClick */}
+                  {/* Gradient Header */}
                   <div className={`relative h-48 bg-gradient-to-br ${gradient} p-6 overflow-hidden`}>
                     <div className="absolute -top-10 -right-10 w-32 h-32 bg-white opacity-10 rounded-full"></div>
                     <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white opacity-10 rounded-full"></div>
@@ -460,7 +481,7 @@ const ViewCardsPage = () => {
                     </div>
                   </div>
 
-                  {/* Info Section - REMOVED onClick */}
+                  {/* Info Section */}
                   <div className="p-6 bg-white dark:bg-gray-800">
                     <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                       <div className="flex items-center space-x-2">
@@ -486,37 +507,23 @@ const ViewCardsPage = () => {
                     </div>
 
                     {/* Tags Preview - Show when NOT expanded */}
-{!isTagsExpanded && card.Tags && (
-  (() => {
-    let tagsArray: string[] = [];
-    try {
-      // Parse if it's a JSON string
-      tagsArray = typeof card.Tags === 'string' ? JSON.parse(card.Tags) : card.Tags;
-      if (!Array.isArray(tagsArray)) tagsArray = [];
-    } catch (e) {
-      console.warn('Failed to parse tags for card:', card.CardId, card.Tags);
-      tagsArray = [];
-    }
-
-    return tagsArray.length > 0 ? (
-      <div className="mt-3 flex flex-wrap gap-1">
-        {tagsArray.slice(0, 3).map((tag, i) => (
-          <span
-            key={i}
-            className="px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"
-          >
-            {tag}
-          </span>
-        ))}
-        {tagsArray.length > 3 && (
-          <span className="px-2 py-1 text-purple-600 dark:text-purple-400 text-xs font-medium">
-            +{tagsArray.length - 3}
-          </span>
-        )}
-      </div>
-    ) : null;
-  })()
-)}
+                    {!isTagsExpanded && hasTags && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {parsedTags.slice(0, 3).map((tag, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {parsedTags.length > 3 && (
+                          <span className="px-2 py-1 text-purple-600 dark:text-purple-400 text-xs font-medium">
+                            +{parsedTags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Manage Tags Button */}
                     {!isTagsExpanded && (
@@ -529,7 +536,7 @@ const ViewCardsPage = () => {
                         className="w-full mt-3 text-xs px-2 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors flex items-center justify-center gap-1"
                       >
                         <Sparkles className="w-3 h-3" />
-                        {card.Tags && card.Tags.length > 0 ? 'Gérer les tags' : 'Ajouter des tags'}
+                        {hasTags ? 'Gérer les tags' : 'Ajouter des tags'} {/* ✅ Fixed: Use parsed length */}
                       </button>
                     )}
 
