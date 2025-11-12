@@ -1,3 +1,5 @@
+"use client";
+
 import React, { FC } from "react";
 import Logo from "@/shared/Logo";
 import Navigation from "@/shared/Navigation/Navigation";
@@ -36,21 +38,20 @@ const MainNav1: FC<MainNav1Props> = ({ className = "" }) => {
             <SwitchDarkMode />
             <SearchDropdown className="flex items-center" />
             <div className="px-1" />
-            {!loading && (
+            {loading ? (
+              // Loading state
+              <div className="self-center w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
+            ) : user ? (
+              <AvatarDropdown />
+            ) : (
               <>
-                {user ? (
-                  <AvatarDropdown />
-                ) : (
-                  <>
-                    <ButtonPrimary className="self-center" href="/login">
-                      Login
-                    </ButtonPrimary>
-                    <div className="px-1" />
-                    <ButtonPrimary className="self-center" href="/signup">
-                      Sign up
-                    </ButtonPrimary>
-                  </>
-                )}
+                <ButtonPrimary className="self-center" href="/login">
+                  Login
+                </ButtonPrimary>
+                <div className="px-1" />
+                <ButtonPrimary className="self-center" href="/signup">
+                  Sign up
+                </ButtonPrimary>
               </>
             )}
           </div>
@@ -58,7 +59,13 @@ const MainNav1: FC<MainNav1Props> = ({ className = "" }) => {
           <div className="flex xl:hidden items-center">
             <SwitchDarkMode />
             <div className="px-0.5" />
-            <MenuBar />
+            {loading ? (
+              <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
+            ) : user ? (
+              <AvatarDropdown />
+            ) : (
+              <MenuBar />
+            )}
           </div>
         </div>
       </div>

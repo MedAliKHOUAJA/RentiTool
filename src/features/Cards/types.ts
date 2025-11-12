@@ -17,7 +17,9 @@ export interface Card {
   ProfilePictureUrl: string | null;
   CompanyLogoUrl: string | null;
   IsFavorite?: boolean;
-  IsArchived?: boolean; 
+  IsArchived?: boolean;
   Notes?: string;
   ReceivedAt?: string;
+  SpecialtiesAndExpertise?: string[] | null;
+  Tags?: string[] | null;
 }

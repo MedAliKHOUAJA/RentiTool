@@ -3,14 +3,14 @@
 
 import { createCardSchema, CreateCardFormData } from '@/features/Cards/schemas/Cards';
 import { db } from '@/app/api/cards/db';
-import { getCurrentUserId } from '@/lib/auth-jwt-server'; // ✅ Import auth function
+import { getCurrentUserId } from '@/lib/auth-jwt-server';
 import { z } from 'zod';
 
 // ✅ NEW: Get current logged-in user
 export async function getCurrentUser() {
   try {
     const userId = await getCurrentUserId();
-    
+
     const result = await db.query(
       `SELECT 
          u."userId", u."FirstName", u."LastName", u."Email", u."Phone",
@@ -20,11 +20,11 @@ export async function getCurrentUser() {
        WHERE u."userId" = $1`,
       [userId]
     );
-    
+
     if (result.rows.length === 0) {
       throw new Error('User not found');
     }
-    
+
     return result.rows[0];
   } catch (error) {
     console.error('Error fetching current user:', error);
@@ -32,16 +32,13 @@ export async function getCurrentUser() {
   }
 }
 
-// ✅ UPDATED: Use dynamic user ID from JWT
+// ✅ UPDATED: createCard now saves specialties
 export async function createCard(formData: FormData) {
   try {
-    // ✅ Get userId from JWT token instead of formData
     const userId = await getCurrentUserId();
 
     const formDataObj = Object.fromEntries(formData);
     console.log('Received formData:', formDataObj);
-    console.log('Profile Picture raw:', formData.get('profilePicture'), typeof formData.get('profilePicture'));
-    console.log('Company Logo raw:', formData.get('companyLogo'), typeof formData.get('companyLogo'));
 
     const data = createCardSchema.parse({
       jobTitle: formData.get('jobTitle') as string,
@@ -51,19 +48,25 @@ export async function createCard(formData: FormData) {
       companyLogo: formData.get('companyLogo') as File | null,
     });
 
+    // ✅ Get specialties from formData (AI-enriched)
+    const specialtiesRaw = formData.get('specialties') as string | null;
+    const specialties = specialtiesRaw ? JSON.parse(specialtiesRaw) : [];
+
     const cardResult = await db.query(
       `INSERT INTO public."BusinessCards" (
         "UserId", "JobTitle", "CompanyName", "WebSite", "CreatedAt", "UpdatedAt", 
-        "QrCodeUrl", "SocialLinks"
-      ) VALUES ($1, $2, $3, $4, NOW(), NOW(), $5, $6)
+        "QrCodeUrl", "SocialLinks", "SpecialtiesAndExpertise", "Tags"
+      ) VALUES ($1, $2, $3, $4, NOW(), NOW(), $5, $6, $7, $8)
       RETURNING "CardId"`,
       [
-        userId, // ✅ Use dynamic userId
+        userId,
         data.jobTitle,
         data.companyName,
         data.webSite || null,
         null,
         null,
+        specialties.length > 0 ? JSON.stringify(specialties) : null, // ✅ Save specialties as JSONB
+        null, // Tags will be added later by user
       ]
     );
 
@@ -98,14 +101,20 @@ export async function createCard(formData: FormData) {
     console.error('Error creating card:', error);
     if (error instanceof z.ZodError) {
       const zodError = error as z.ZodError<z.infer<typeof createCardSchema>>;
-      return { success: false, error: zodError.issues.map((e: z.ZodIssue) => e.message).join(', ') };
+      return {
+        success: false,
+        error: zodError.issues.map((e: z.ZodIssue) => e.message).join(', '),
+      };
     }
     return { success: false, error: 'Erreur serveur lors de la création de la carte' };
   }
 }
 
-// ✅ UPDATED: Verify ownership before updating
-export async function updateCard(cardId: number, formData: FormData) {
+// ✅ UPDATED: updateCard now supports Tags and Specialties
+export async function updateCard(
+  cardId: number,
+  formData: FormData | { tags?: string[]; specialties?: string[] }
+) {
   try {
     const currentUserId = await getCurrentUserId();
 
@@ -120,63 +129,109 @@ export async function updateCard(cardId: number, formData: FormData) {
     }
 
     const cardOwnerId = ownerCheck.rows[0].UserId;
-    
+
     if (cardOwnerId !== currentUserId) {
       return { success: false, error: 'Non autorisé à modifier cette carte' };
     }
 
-    const data = createCardSchema.parse({
-      jobTitle: formData.get('jobTitle') as string,
-      companyName: formData.get('companyName') as string,
-      webSite: formData.get('webSite') as string | null,
-      profilePicture: formData.get('profilePicture') as File | null,
-      companyLogo: formData.get('companyLogo') as File | null,
-    });
+    // ✅ Handle both FormData and JSON object inputs
+    let jobTitle, companyName, webSite, profilePicture, companyLogo, tags, specialties;
+
+    if (formData instanceof FormData) {
+      // Traditional form update (for card details)
+      const data = createCardSchema.parse({
+        jobTitle: formData.get('jobTitle') as string,
+        companyName: formData.get('companyName') as string,
+        webSite: formData.get('webSite') as string | null,
+        profilePicture: formData.get('profilePicture') as File | null,
+        companyLogo: formData.get('companyLogo') as File | null,
+      });
+
+      jobTitle = data.jobTitle;
+      companyName = data.companyName;
+      webSite = data.webSite || null;
+      profilePicture = data.profilePicture;
+      companyLogo = data.companyLogo;
+    } else {
+      // JSON object update (for tags/specialties only)
+      tags = formData.tags;
+      specialties = formData.specialties;
+    }
+
+    // ✅ Build dynamic UPDATE query
+    let updateFields = ['"UpdatedAt" = NOW()'];
+    let params: any[] = [];
+    let paramIndex = 1;
+
+    if (jobTitle) {
+      updateFields.push(`"JobTitle" = $${paramIndex++}`);
+      params.push(jobTitle);
+    }
+
+    if (companyName) {
+      updateFields.push(`"CompanyName" = $${paramIndex++}`);
+      params.push(companyName);
+    }
+
+    if (webSite !== undefined) {
+      updateFields.push(`"WebSite" = $${paramIndex++}`);
+      params.push(webSite);
+    }
+
+    if (specialties) {
+      updateFields.push(`"SpecialtiesAndExpertise" = $${paramIndex++}`);
+      params.push(JSON.stringify(specialties));
+    }
+
+    if (tags) {
+      updateFields.push(`"Tags" = $${paramIndex++}`);
+      params.push(JSON.stringify(tags));
+    }
+
+    // Add cardId as final parameter
+    params.push(cardId);
 
     const cardResult = await db.query(
       `UPDATE public."BusinessCards"
-       SET "JobTitle" = $1, "CompanyName" = $2, "WebSite" = $3, 
-           "UpdatedAt" = NOW()
-       WHERE "CardId" = $4
+       SET ${updateFields.join(', ')}
+       WHERE "CardId" = $${paramIndex}
        RETURNING "CardId"`,
-      [
-        data.jobTitle,
-        data.companyName,
-        data.webSite || null,
-        cardId,
-      ]
+      params
     );
 
     if (cardResult.rowCount !== 1) {
       return { success: false, error: 'Carte non trouvée ou échec de la mise à jour' };
     }
 
-    if (data.profilePicture) {
-      const buffer = Buffer.from(await data.profilePicture.arrayBuffer());
-      await db.query(
-        `DELETE FROM public."Images" WHERE "BusinessCardId" = $1 AND "ImageType" = $2`,
-        [cardId, 'ProfilePicture']
-      );
-      await db.query(
-        `INSERT INTO public."Images" (
-          "ImageBinary", "UserId", "BusinessCardId", "ClassificationId", "ImageType"
-        ) VALUES ($1, $2, $3, $4, $5)`,
-        [buffer, currentUserId, cardId, 1, 'ProfilePicture']
-      );
-    }
+    // ✅ Handle image updates only if FormData
+    if (formData instanceof FormData) {
+      if (profilePicture) {
+        const buffer = Buffer.from(await profilePicture.arrayBuffer());
+        await db.query(
+          `DELETE FROM public."Images" WHERE "BusinessCardId" = $1 AND "ImageType" = $2`,
+          [cardId, 'ProfilePicture']
+        );
+        await db.query(
+          `INSERT INTO public."Images" (
+            "ImageBinary", "UserId", "BusinessCardId", "ClassificationId", "ImageType"
+          ) VALUES ($1, $2, $3, $4, $5)`,
+          [buffer, currentUserId, cardId, 1, 'ProfilePicture']
+        );
+      }
 
-    if (data.companyLogo) {
-      const buffer = Buffer.from(await data.companyLogo.arrayBuffer());
-      await db.query(
-        `DELETE FROM public."Images" WHERE "BusinessCardId" = $1 AND "ImageType" = $2`,
-        [cardId, 'CompanyLogo']
-      );
-      await db.query(
-        `INSERT INTO public."Images" (
-          "ImageBinary", "UserId", "BusinessCardId", "ClassificationId", "ImageType"
-        ) VALUES ($1, $2, $3, $4, $5)`,
-        [buffer, currentUserId, cardId, 1, 'CompanyLogo']
-      );
+      if (companyLogo) {
+        const buffer = Buffer.from(await companyLogo.arrayBuffer());
+        await db.query(
+          `DELETE FROM public."Images" WHERE "BusinessCardId" = $1 AND "ImageType" = $2`,
+          [cardId, 'CompanyLogo']
+        );
+        await db.query(
+          `INSERT INTO public."Images" (
+            "ImageBinary", "UserId", "BusinessCardId", "ClassificationId", "ImageType"
+          ) VALUES ($1, $2, $3, $4, $5)`,
+          [buffer, currentUserId, cardId, 1, 'CompanyLogo']
+        );
+      }
     }
 
     return { success: true, cardId };
@@ -184,13 +239,16 @@ export async function updateCard(cardId: number, formData: FormData) {
     console.error('Error updating card:', error);
     if (error instanceof z.ZodError) {
       const zodError = error as z.ZodError<z.infer<typeof createCardSchema>>;
-      return { success: false, error: zodError.issues.map((e: z.ZodIssue) => e.message).join(', ') };
+      return {
+        success: false,
+        error: zodError.issues.map((e: z.ZodIssue) => e.message).join(', '),
+      };
     }
     return { success: false, error: 'Erreur serveur lors de la mise à jour de la carte' };
   }
 }
 
-// ✅ UPDATED: Verify ownership before deleting
+// ✅ UPDATED: Delete card (unchanged, but kept for reference)
 export async function deleteCard(cardId: number) {
   try {
     const currentUserId = await getCurrentUserId();
@@ -209,10 +267,7 @@ export async function deleteCard(cardId: number) {
       return { success: false, error: 'Non autorisé à supprimer cette carte' };
     }
 
-    await db.query(
-      `DELETE FROM public."Images" WHERE "BusinessCardId" = $1`,
-      [cardId]
-    );
+    await db.query(`DELETE FROM public."Images" WHERE "BusinessCardId" = $1`, [cardId]);
 
     const result = await db.query(
       `DELETE FROM public."BusinessCards"
@@ -249,15 +304,15 @@ export async function getUserById(userId: string) {
   }
 }
 
-// ✅ UPDATED: Get cards for current user
+// ✅ UPDATED: Get cards now includes Tags and Specialties
 export async function getCardsByUserId(userId?: string) {
   try {
-    // ✅ If no userId provided, get current user
-    const targetUserId = userId || await getCurrentUserId();
-    
+    const targetUserId = userId || (await getCurrentUserId());
+
     const result = await db.query(
       `SELECT 
          bc."CardId", bc."JobTitle", bc."CompanyName", bc."WebSite", bc."QrCodeUrl", bc."SocialLinks",
+         bc."SpecialtiesAndExpertise", bc."Tags",
          u."FirstName", u."LastName", u."Email", u."Phone",
          l."Governorate", l."Delegation", l."Postalcode",
          (SELECT encode("ImageBinary", 'base64') FROM public."Images" 
@@ -282,6 +337,7 @@ export async function getCardById(cardId: number) {
     const result = await db.query(
       `SELECT 
          bc."CardId", bc."JobTitle", bc."CompanyName", bc."WebSite", bc."QrCodeUrl", bc."SocialLinks",
+         bc."SpecialtiesAndExpertise", bc."Tags",
          u."FirstName", u."LastName", u."Email", u."Phone",
          l."Governorate", l."Delegation", l."Postalcode",
          (SELECT encode("ImageBinary", 'base64') FROM public."Images" 
@@ -301,10 +357,10 @@ export async function getCardById(cardId: number) {
   }
 }
 
-// ✅ UPDATED: Save card for current user
+// ✅ UPDATED: Save shared card (unchanged)
 export async function saveSharedCard(cardId: number, notes?: string) {
   try {
-    const userId = await getCurrentUserId(); // ✅ Get dynamic user
+    const userId = await getCurrentUserId();
     const card = await getCardById(cardId);
     if (!card) throw new Error('Carte non trouvée');
 
@@ -327,11 +383,11 @@ export async function saveSharedCard(cardId: number, notes?: string) {
   }
 }
 
-// ✅ UPDATED: Get saved cards for current user
+// ✅ UPDATED: Get saved cards now includes Tags and Specialties
 export async function getSavedCardsByUserId(userId?: string) {
   try {
-    const targetUserId = userId || await getCurrentUserId(); // ✅ Get dynamic user
-    
+    const targetUserId = userId || (await getCurrentUserId());
+
     const result = await db.query(
       `SELECT 
          bc.*,
