@@ -143,43 +143,32 @@ if (!RESEND_API_KEY && !SENDGRID_API_KEY && smtpTransporter) {
 export const emailTemplates = {
   welcome: (firstName: string, email: string) => {
     return {
-      subject: 'Bienvenue sur RentiTool !',
+      subject: 'Bienvenue sur Notre App !',
       html: `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background: #ffffff;">
-          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0; color: white;">
-            <img src="https://via.placeholder.com/150x50/3b82f6/ffffff?text=RentiTool" alt="RentiTool Logo" style="max-width: 150px; height: auto; margin-bottom: 10px;">
-            <h1 style="margin: 0; font-size: 24px;">Bienvenue, ${firstName} !</h1>
-            <p style="margin: 0; opacity: 0.95;">Rejoignez la communauté des location d'outils</p>
-          </div>
-          <div style="padding: 30px;">
-            <p>Merci de vous être inscrit sur <strong>RentiTool</strong> avec l'email ${email}.</p>
-            <p>Découvrez des outils de qualité à louer près de chez vous, en toute simplicité et sécurité.</p>
-            <a href="http://localhost:3000/login" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">Commencer à louer</a>
-            <p style="font-size: 12px; color: #9ca3af; text-align: center;">Si vous n'avez pas créé de compte, ignorez cet email.</p>
-          </div>
-          <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 12px 12px;">
-            © 2025 RentiTool – Location d'outils simplifiée
-          </div>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h2 style="color: #333;">Bienvenue, ${firstName} !</h2>
+          <p>Merci de vous être inscrit sur Notre App avec l'email ${email}.</p>
+          <p>Vous pouvez maintenant vous connecter et explorer nos fonctionnalités.</p>
+          <a href="https://votreapp.com/login" style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Se connecter</a>
+          <p style="font-size: 12px; color: #999;">Si vous n'avez pas créé de compte, ignorez cet email.</p>
         </div>
       `,
     };
   },
   loginNotification: (firstName: string, email: string, when: string, ip?: string, location?: string) => { // ← Ajout du paramètre 'location'
     const safeName = firstName || 'Utilisateur';
-    const ipInfo = ip ? `<p style="font-size: 12px; color: #6b7280;">Adresse IP: ${ip}</p>` : '';
+    const ipInfo = ip ? `<p style="font-size: 12px; color: #666;">Adresse IP: ${ip}</p>` : '';
     const locationInfo = location && location !== 'Localisation inconnue'
-      ? `<p style="font-size: 14px; color: #059669; font-weight: bold; margin: 8px 0;">📍 Localisation: ${location}</p>` // ← Affichage de la localisation
+      ? `<p style="font-size: 14px; color: #059669; font-weight: bold;">📍 Localisation: ${location}</p>` // ← Affichage de la localisation
       : ''; // Skip si inconnue
    
     return {
       subject: '🛡️ Nouvelle connexion détectée sur votre compte RentiTool', // ← Sujet mis à jour pour plus d'impact
       html: `
         <!DOCTYPE html>
-        <html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="fr">
+        <html>
           <head>
-            <title>Nouvelle connexion RentiTool</title>
-            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta charset="UTF-8">
             <style>
               * { box-sizing: border-box; }
               body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
@@ -218,13 +207,58 @@ export const emailTemplates = {
                   Une connexion à votre compte (${email}) a été détectée depuis un appareil de location d'outils.
                 </div>
                 <p><strong>Date et heure :</strong> ${when}</p>
-                ${locationInfo}
+                ${locationInfo} <!-- ← La localisation s'affiche ici ! -->
                 ${ipInfo}
                 <p style="color: #374151;">Si c'était bien vous, continuez à louer en toute confiance ! Sinon, <strong>changez immédiatement votre mot de passe</strong> et contactez le support RentiTool.</p>
                 <br>
                 <a href="http://localhost:3000/profile" class="btn">🔒 Sécuriser mon compte</a>
                 <br><br>
                 <p style="font-size: 14px; color: #6b7280;">Besoin d'aide pour une location ? <a href="mailto:support@rentitool.com" style="color: #3b82f6;">support@rentitool.com</a></p>
+              </div>
+              <div class="footer">
+                Cet email est automatique. Merci de ne pas y répondre.<br>
+                © 2025 RentiTool – Louez malin, partout en Tunisie
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+  },
+  resetPassword: (firstName: string, resetUrl: string, email: string) => {
+    const safeName = firstName || 'Utilisateur';
+    return {
+      subject: '🔑 Réinitialisez votre mot de passe RentiTool',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; }
+              .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden; }
+              .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; }
+              .header img { max-width: 150px; height: auto; margin-bottom: 10px; }
+              .content { padding: 30px; }
+              .btn { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; }
+              .footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <img src="https://via.placeholder.com/150x50/3b82f6/ffffff?text=RentiTool" alt="RentiTool Logo">
+                <h1 style="margin: 0; font-size: 24px;">Réinitialisation de mot de passe</h1>
+                <p style="margin: 0; opacity: 0.9;">Récupérez l'accès à votre compte</p>
+              </div>
+              <div class="content">
+                <p>Bonjour ${safeName},</p>
+                <p>Vous avez demandé à réinitialiser votre mot de passe pour votre compte RentiTool (${email}).</p>
+                <p>Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe. Ce lien expire dans 1 heure.</p>
+                <br>
+                <a href="${resetUrl}" class="btn">🔒 Réinitialiser mon mot de passe</a>
+                <br><br>
+                <p style="color: #6b7280; font-size: 14px;">Si vous n'avez pas demandé cela, ignorez cet email.</p>
               </div>
               <div class="footer">
                 Cet email est automatique. Merci de ne pas y répondre.<br>
