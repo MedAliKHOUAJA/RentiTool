@@ -47,10 +47,10 @@ if (response.ok && data.success) {
   console.log('✅ Connexion réussie! Redirection vers /');
   console.log('👤 Utilisateur connecté:', data.user);
   
-  // Redirection avec refresh
-  router.push('/');
-  router.refresh();
-  
+
+  setTimeout(() => {
+  window.location.href = '/';
+  }, 100);
 
         
       } else {

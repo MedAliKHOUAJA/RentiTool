@@ -73,4 +73,4 @@ const MainNav1: FC<MainNav1Props> = ({ className = "" }) => {
   );
 };
 
-export default MainNav1;
+export default MainNav1;  
