@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query, testConnection } from '@/db';
-//import { db, testConnection } from '@/lib/database';
 import { sendEmail, emailTemplates } from '@/lib/resend';
 import { validateSignupData, sanitizeInput } from '@/lib/validation';
 import { randomUUID } from 'crypto';
@@ -54,9 +53,9 @@ export async function POST(request: NextRequest) {
     // Connexion DB et validation unicité email
     await testConnection();
 
-    // Vérifier si email existe
+    // ✅ CORRIGÉ : Ajout du schéma public
     const existing = await query(
-      `SELECT "userId" FROM "User" WHERE "Email" = $1`,
+      `SELECT "userId" FROM public."User" WHERE "Email" = $1`,
       [email]
     );
     const existingRowCount = typeof existing?.rowCount === 'number' ? existing.rowCount : 0;
@@ -86,9 +85,9 @@ export async function POST(request: NextRequest) {
 
     const roleId = mapUserTypeToRoleId(userType);
 
-    // Insérer l'utilisateur
+    // ✅ CORRIGÉ : Ajout du schéma public
     const insertResult = await query(
-      `INSERT INTO "User" (
+      `INSERT INTO public."User" (
         "userId", "FirstName", "LastName", "Email", "Phone", "Password", "RoleId", "LocationId"
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING "userId", "FirstName", "LastName", "Email", "Phone", "RoleId", "LocationId"`,
@@ -100,7 +99,7 @@ export async function POST(request: NextRequest) {
         phone || null,
         hashedPassword,
         roleId,
-        null // Aucune localisation au signup par défaut
+        null 
       ]
     );
 
@@ -124,17 +123,23 @@ export async function POST(request: NextRequest) {
 
       if (emailResult.success) {
         console.log('✅ Email Resend envoyé avec succès');
-        //console.log('📧 Email ID:', emailResult.data?.id);
       } else {
         console.warn('⚠️ Échec envoi email Resend:', emailResult.error);
-        // Continuer même si l'email échoue
       }
     } catch (emailError) {
       console.error('❌ Erreur envoi email Resend:', emailError);
-      // Continuer même si l'email échoue
     }
 
-    // ... (garder votre logique JWT et réponse existante)
+    // Générer le token JWT
+    const token = jwt.sign(
+      { 
+        userId: newUser.userId,
+        email: newUser.Email,
+        roleId: newUser.RoleId
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     const response = NextResponse.json({
       success: true,
@@ -150,7 +155,14 @@ export async function POST(request: NextRequest) {
       }
     }, { status: 201 });
 
-    // ... (garder votre logique de cookie)
+    // Définir le cookie HTTP-only
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 jours
+      path: '/',
+    });
 
     console.log('🎉 Inscription terminée avec succès');
     return response;
@@ -165,5 +177,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   }
 }
-
-// Supprimer l'ancien template HTML qui était dans ce fichier

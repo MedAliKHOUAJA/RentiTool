@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     // Find user with embedding
     const result = await query(
       `SELECT "userId", "FirstName", "LastName", "Email", "Password", "RoleId", "LocationId", "Phone", "face_embedding"
-       FROM "User" WHERE "face_embedding" IS NOT NULL`
+       FROM public."User" WHERE "face_embedding" IS NOT NULL`
     );
 
     if (result.rowCount === 0) {
