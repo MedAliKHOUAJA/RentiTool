@@ -37,7 +37,7 @@ export default function MobileBottomNav() {
     },
     {
       name: 'Home',
-      path: '/',
+      path: '/home',
       icon: HomeIcon,
       iconSolid: HomeIconSolid,
       isHome: true,

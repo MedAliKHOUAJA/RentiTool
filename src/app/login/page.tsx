@@ -63,7 +63,7 @@ export default function LoginPage() {
         setSuccess('Connexion réussie! Redirection...');
         
         setTimeout(() => {
-          window.location.href = '/';
+          window.location.href = '/home';
         }, 1000);
         
       } else {
