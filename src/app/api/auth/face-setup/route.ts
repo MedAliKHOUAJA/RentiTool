@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Update DB: store as JSON string to be compatible with text/jsonb columns
     const embeddingJson = JSON.stringify(embedding);
     await query(
-      `UPDATE "User" SET "face_embedding" = $1 WHERE "userId" = $2`,
+      `UPDATE public."User" SET "face_embedding" = $1 WHERE "userId" = $2`,
       [embeddingJson, decoded.userId]
     );
 

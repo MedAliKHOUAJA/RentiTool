@@ -1,9 +1,9 @@
+// src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { query, testConnection } from '@/db';
-//import { db, testConnection } from '@/lib/database';
 import { sendEmail, emailTemplates } from '@/lib/resend';
+import { query, testConnection } from '@/db';
 
 export const runtime = 'nodejs';
 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     
     const result = await query(
       `SELECT "userId", "FirstName", "LastName", "Email", "Password", "RoleId", "LocationId", "Phone"
-       FROM "User" WHERE "Email" = $1`,
+       FROM public."User" WHERE "Email" = $1`,
       [cleanEmail]
     );
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         user.Email, 
         when, 
         ip, 
-       // locationInfo  // Passe toujours, même si 'inconnue'
+        locationInfo  // Passe toujours, même si 'inconnue'
       );
       const result = await sendEmail(user.Email, subject, html);
       if (!result.success) {
