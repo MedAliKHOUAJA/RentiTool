@@ -168,7 +168,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 1 --------------------- */}
                     <Link
-                      href={"/account"}
+                       href={"/account/profile" as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >
@@ -203,7 +203,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 2 --------------------- */}
                     <Link
-                      href={"/author" as PathName}
+                      href={"/my-rentals" as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >
@@ -255,7 +255,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 3 --------------------- */}
                     <Link
-                      href={"/account-savelists" as Route}
+                      href={"/tools-management" as Route}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >

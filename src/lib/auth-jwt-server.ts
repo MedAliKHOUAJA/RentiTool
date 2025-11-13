@@ -1,4 +1,3 @@
-// src/lib/auth-jwt-server.ts
 'use server';
 
 import { cookies } from 'next/headers';

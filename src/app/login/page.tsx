@@ -1,21 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useRef, useState } from "react";
+import { loadFaceModels, startCamera, stopCamera, computeEmbeddingFromVideo, hasMediaDevices } from '@/utils/face';
+
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [success, setSuccess] = useState("");
+
+  // Face login states
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [faceMode, setFaceMode] = useState(false);
+  const [faceLoading, setFaceLoading] = useState(false);
+  const [faceError, setFaceError] = useState("");
+  const [faceMessage, setFaceMessage] = useState("");
+  const [embedding, setEmbedding] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) stopCamera(videoRef.current);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setSuccess("");
 
     if (!email || !password) {
       setError("Veuillez remplir tous les champs");
@@ -33,24 +49,22 @@ export default function LoginPage() {
         },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          password,
-          remember
+          password: password
+          
         }),
       });
 
       const data = await response.json();
       console.log('📨 Réponse API login:', data);
 
-// Dans votre login page.tsx
-if (response.ok && data.success) {
-  console.log('✅ Connexion réussie! Redirection vers /');
-  console.log('👤 Utilisateur connecté:', data.user);
-  
-
-  setTimeout(() => {
-  window.location.href = '/';
-  }, 100);
-
+      if (response.ok && data.success) {
+        console.log('✅ Connexion réussie! Redirection vers /profile');
+        console.log('👤 Utilisateur connecté:', data.user);
+        setSuccess('Connexion réussie! Redirection...');
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
         
       } else {
         console.log('❌ Erreur connexion:', data.error);
@@ -66,8 +80,9 @@ if (response.ok && data.success) {
 
   // Testez avec un utilisateur existant
   const testCredentials = () => {
-    setEmail("test@example.com");
-    setPassword("test123");
+    setEmail("aichamaala@gmail.com");
+    setPassword("hahaha");
+    setError("");
   };
 
   return (
@@ -103,14 +118,13 @@ if (response.ok && data.success) {
             <p className="text-sm text-slate-600">
               Connectez-vous pour accéder à votre profil personnel.
             </p>
-            
-            {/* Bouton de test (optionnel - à retirer en production) */}
-            <button 
+            {/* Bouton de test */}
+            <button
               onClick={testCredentials}
               className="mt-4 text-xs text-blue-600 hover:underline"
               type="button"
             >
-              Remplir avec des identifiants de test
+              Remplir avec mes identifiants de test
             </button>
           </div>
         </div>
@@ -126,6 +140,12 @@ if (response.ok && data.success) {
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                {success}
               </div>
             )}
 
@@ -146,7 +166,7 @@ if (response.ok && data.success) {
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
                     className="pl-10 pr-3 py-2 w-full rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent bg-white disabled:bg-gray-50"
-                    placeholder="exemple@email.com"
+                    placeholder="aichamaala@gmail.com"
                   />
                 </div>
               </label>
@@ -195,16 +215,6 @@ if (response.ok && data.success) {
               </label>
 
               <div className="flex items-center justify-between text-sm">
-                <label className="inline-flex items-center gap-2 text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={() => setRemember((r) => !r)}
-                    disabled={isLoading}
-                    className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                  />
-                  Se souvenir de moi
-                </label>
                 <a href="/forgot-password" className="text-sky-600 hover:underline">
                   Mot de passe oublié ?
                 </a>
@@ -224,6 +234,113 @@ if (response.ok && data.success) {
               <a href="/signup" className="text-sky-600 font-medium hover:underline">
                 Créer un compte
               </a>
+            </div>
+
+            {/* Face Login */}
+            <div className="mt-8 border-t pt-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-slate-800">Connexion par visage</h3>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setFaceError("");
+                    setFaceMessage("");
+                    setEmbedding(null);
+                    if (!faceMode) {
+                      try {
+                        setFaceLoading(true);
+                        await loadFaceModels('/models');
+                        setFaceMode(true);
+                        if (videoRef.current) await startCamera(videoRef.current);
+                        setFaceMessage('Caméra démarrée. Regardez bien en face.');
+                      } catch (e) {
+                        console.error('Start face login error', e);
+                        setFaceError("Impossible de démarrer la caméra. Autorisez l'accès.");
+                      } finally {
+                        setFaceLoading(false);
+                      }
+                    } else {
+                      if (videoRef.current) stopCamera(videoRef.current);
+                      setFaceMode(false);
+                      setFaceMessage('Caméra arrêtée');
+                    }
+                  }}
+                  className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200"
+                >
+                  {faceMode ? 'Arrêter' : 'Activer'}
+                </button>
+              </div>
+
+              {faceError && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{faceError}</div>
+              )}
+              {faceMessage && (
+                <div className="mb-3 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">{faceMessage}</div>
+              )}
+
+              <div className="space-y-3">
+                <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                  <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={!faceMode || faceLoading}
+                    onClick={async () => {
+                      setFaceError("");
+                      setFaceMessage("");
+                      if (!videoRef.current) return;
+                      try {
+                        setFaceLoading(true);
+                        const emb = await computeEmbeddingFromVideo(videoRef.current, 30, 150);
+                        if (!emb) {
+                          setFaceError('Visage non détecté. Essayez avec une meilleure luminosité.');
+                          return;
+                        }
+                        setEmbedding(emb);
+                        setFaceMessage('Visage détecté. Tentative de connexion…');
+                        // Call face login API
+                        const res = await fetch('/api/auth/face-login', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ embedding: emb }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.success) {
+                          setFaceError(data.error || 'Échec de la connexion par visage');
+                          return;
+                        }
+                        setSuccess('Connexion réussie! Redirection...');
+                        setTimeout(() => {
+                          window.location.href = '/profile?onboarding=1';
+                        }, 800);
+                      } catch (e) {
+                        console.error('Face login error', e);
+                        setFaceError('Erreur durant la connexion par visage');
+                      } finally {
+                        setFaceLoading(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-50"
+                  >
+                    {faceLoading ? 'Analyse…' : 'Se connecter avec le visage'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (videoRef.current) stopCamera(videoRef.current);
+                      setFaceMode(false);
+                      setEmbedding(null);
+                      setFaceMessage('Caméra arrêtée');
+                    }}
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

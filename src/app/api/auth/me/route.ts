@@ -1,4 +1,3 @@
-// src/app/api/auth/me/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { query } from '@/db';

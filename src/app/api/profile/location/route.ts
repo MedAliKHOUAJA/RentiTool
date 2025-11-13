@@ -1,11 +1,83 @@
-// src/app/api/profile/location/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+
 import jwt from 'jsonwebtoken';
 import { query } from '@/db';
 
 export const dynamic = 'force-dynamic';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'rentitool-secret-key-2024';
+
+// GET pour récupérer toutes les localisations disponibles
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.cookies.get('auth_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+    // Info utilisateur - CORRECTION: utiliser 'query' importé, pas 'db.query'
+    const userResult = await query(
+      `SELECT "userId", "FirstName", "Email", "LocationId" FROM "User" WHERE "userId" = $1`,
+      [decoded.userId]
+    );
+    const user = userResult.rows[0];
+
+    // Recherche optionnelle via query string
+    const { searchParams } = new URL(request.url);
+    const searchQuery = searchParams.get('query'); // Renommer pour éviter le conflit
+
+    let locationsResult;
+    if (searchQuery && searchQuery.trim().length > 0) {
+      // Recherche par Governorate, Delegation ou Postalcode (ILIKE pour case-insensitive)
+      locationsResult = await query(
+        `SELECT "LocationId", "Governorate", "Delegation", "Postalcode"
+         FROM "Locations"
+         WHERE "Governorate" ILIKE '%' || $1 || '%'
+            OR "Delegation" ILIKE '%' || $1 || '%'
+            OR CAST("Postalcode" AS TEXT) ILIKE '%' || $1 || '%' 
+         LIMIT 50`,
+        [searchQuery] // Utiliser le nom renommé
+      );
+    } else {
+      // Par défaut, renvoyer quelques entrées pour amorcer l'UI (limite 50)
+      locationsResult = await query(
+        `SELECT "LocationId", "Governorate", "Delegation", "Postalcode" 
+         FROM "Locations" 
+         ORDER BY "Governorate" ASC, "Delegation" ASC 
+         LIMIT 50`
+      );
+    }
+
+    // Location actuelle de l'utilisateur
+    let currentLocation = null;
+    if (user.LocationId) {
+      const locationResult = await query(
+        `SELECT "LocationId", "Governorate", "Delegation", "Postalcode" 
+         FROM "Locations" WHERE "LocationId" = $1`,
+        [user.LocationId]
+      );
+      currentLocation = locationResult.rows[0] || null;
+    }
+
+    return NextResponse.json({
+      user: {
+        id: user.userId,
+        name: user.FirstName,
+        email: user.Email,
+        locationId: user.LocationId
+      },
+      currentLocation,
+      locations: locationsResult.rows
+    });
+
+  } catch (error) {
+    console.error('Debug location error:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}
 
 export async function PUT(request: NextRequest) {
   try {
@@ -45,34 +117,6 @@ export async function PUT(request: NextRequest) {
 
   } catch (error) {
     console.error('Erreur mise à jour localisation:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
-  }
-}
-
-// GET pour récupérer toutes les localisations disponibles
-export async function GET(request: NextRequest) {
-  try {
-    const token = request.cookies.get('auth_token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
-
-    jwt.verify(token, JWT_SECRET); // Vérifier le token
-
-    const locations = await query(
-      `SELECT "LocationId", "Governorate", "Delegation", "Postalcode" 
-       FROM "Locations" 
-       ORDER BY "Governorate", "Delegation"`
-    );
-
-    return NextResponse.json({
-      success: true,
-      locations: locations.rows
-    });
-
-  } catch (error) {
-    console.error('Erreur récupération localisations:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

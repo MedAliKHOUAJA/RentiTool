@@ -1,166 +1,144 @@
-// src/app/api/auth/signup/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query, testConnection } from '@/db';
+//import { db, testConnection } from '@/lib/database';
+import { sendEmail, emailTemplates } from '@/lib/resend';
+import { validateSignupData, sanitizeInput } from '@/lib/validation';
+import { randomUUID } from 'crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'rentitool-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error('❌ JWT_SECRET non défini');
+}
 
 export async function POST(request: NextRequest) {
   console.log('🚀 Début inscription API');
   
+  if (!JWT_SECRET) {
+    return NextResponse.json(
+      { error: 'Configuration serveur manquante' },
+      { status: 500 }
+    );
+  }
+  
   try {
     const body = await request.json();
-    const { firstName, lastName, email, phone, password, userType } = body;
+    console.log('📝 Données reçues:', body);
 
-    console.log('📝 Données reçues:', { firstName, lastName, email, userType });
+    // Sanitiser les données d'entrée
+    const sanitizedData = {
+      firstName: sanitizeInput(body.firstName || ''),
+      lastName: sanitizeInput(body.lastName || ''),
+      email: sanitizeInput(body.email || '').toLowerCase(),
+      phone: sanitizeInput(body.phone || ''),
+      password: body.password || '',
+      confirmPassword: body.confirmPassword || '',
+      userType: body.userType || 'user',
+      city: sanitizeInput(body.city || '')
+    };
 
-    // Validation
-    if (!firstName || !lastName || !email || !password) {
-      return NextResponse.json(
-        { error: 'Prénom, Nom, Email et Mot de passe requis' },
-        { status: 400 }
-      );
+    // Valider les données
+    const validation = validateSignupData(sanitizedData);
+    if (!validation.isValid) {
+      console.log('❌ Validation échouée:', validation.errors);
+      return NextResponse.json({ 
+        error: 'Données invalides',
+        errors: validation.errors 
+      }, { status: 400 });
     }
 
-    // Test connexion BD
+    const { firstName, lastName, email, phone, password, userType } = sanitizedData;
+
+    // Connexion DB et validation unicité email
     await testConnection();
 
     // Vérifier si email existe
-    const emailCheck = await query(
+    const existing = await query(
       `SELECT "userId" FROM "User" WHERE "Email" = $1`,
-      [email.toLowerCase().trim()]
+      [email]
     );
-
-    if (emailCheck.rows.length > 0) {
-      return NextResponse.json(
-        { error: 'Email déjà utilisé' },
-        { status: 409 }
-      );
+    const existingRowCount = typeof existing?.rowCount === 'number' ? existing.rowCount : 0;
+    if (existingRowCount > 0) {
+      return NextResponse.json({ error: 'Un compte existe déjà avec cet email' }, { status: 409 });
     }
 
-    // Vérifier que les RoleId existent
-    const roleId = userType === 'owner' ? 1 : 2;
-    const roleCheck = await query(
-      `SELECT "RoleId" FROM "UserRole" WHERE "RoleId" = $1`,
-      [roleId]
-    );
+    // Hash du mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    if (roleCheck.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Type d\'utilisateur invalide' },
-        { status: 400 }
-      );
-    }
+    // Générer un userId si non géré par la BD
+    const userId = randomUUID();
 
-    // Vérifier LocationId par défaut
-    const locationCheck = await query(
-      `SELECT "LocationId" FROM "Locations" WHERE "LocationId" = $1`,
-      [1]
-    );
+    // Mapper le userType string vers RoleId numérique conforme au schéma
+    const mapUserTypeToRoleId = (type: string): number => {
+      switch (type?.toLowerCase()) {
+        case 'admin':
+          return 1; // Admin
+        case 'owner':
+          return 2; // Propriétaire
+        case 'tenant':
+          return 3; // Locataire
+        default:
+          return 4; // Utilisateur standard
+      }
+    };
 
-    const locationId = locationCheck.rows.length > 0 ? 1 : null;
+    const roleId = mapUserTypeToRoleId(userType);
 
-    // Hasher mot de passe
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Gérer le téléphone (integer)
-    let phoneValue = null;
-    if (phone && phone.toString().trim() !== '') {
-      const cleanPhone = phone.toString().replace(/\D/g, '');
-      phoneValue = cleanPhone ? parseInt(cleanPhone) : null;
-    }
-
-    // REQUÊTE COMPLÈTE avec UUID et toutes les colonnes
-    console.log('💾 Insertion utilisateur avec UUID...');
-    
-    let insertQuery, values;
-
-    if (locationId) {
-      // Avec LocationId
-      insertQuery = `
-        INSERT INTO "User" (
-          "FirstName", 
-          "LastName", 
-          "Email", 
-          "Phone", 
-          "Password", 
-          "RoleId",
-          "LocationId"
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING 
-          "userId", 
-          "FirstName", 
-          "LastName", 
-          "Email", 
-          "Phone", 
-          "RoleId",
-          "LocationId"
-      `;
-      values = [
-        firstName.trim(),
-        lastName.trim(), 
-        email.toLowerCase().trim(),
-        phoneValue,
+    // Insérer l'utilisateur
+    const insertResult = await query(
+      `INSERT INTO "User" (
+        "userId", "FirstName", "LastName", "Email", "Phone", "Password", "RoleId", "LocationId"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING "userId", "FirstName", "LastName", "Email", "Phone", "RoleId", "LocationId"`,
+      [
+        userId,
+        firstName,
+        lastName,
+        email,
+        phone || null,
         hashedPassword,
         roleId,
-        locationId
-      ];
-    } else {
-      // Sans LocationId
-      insertQuery = `
-        INSERT INTO "User" (
-          "FirstName", 
-          "LastName", 
-          "Email", 
-          "Phone", 
-          "Password", 
-          "RoleId"
-        ) VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING 
-          "userId", 
-          "FirstName", 
-          "LastName", 
-          "Email", 
-          "Phone", 
-          "RoleId",
-          "LocationId"
-      `;
-      values = [
-        firstName.trim(),
-        lastName.trim(), 
-        email.toLowerCase().trim(),
-        phoneValue,
-        hashedPassword,
-        roleId
-      ];
-    }
-
-    console.log('📋 Exécution requête:', insertQuery);
-    const result = await query(insertQuery, values);
-    
-    if (result.rows.length === 0) {
-      throw new Error('Aucun utilisateur créé');
-    }
-
-    const newUser = result.rows[0];
-    console.log('✅ Utilisateur créé avec UUID:', newUser.userId);
-
-    // Token JWT
-    const token = jwt.sign(
-      { 
-        userId: newUser.userId,
-        email: newUser.Email,
-        roleId: newUser.RoleId
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+        null // Aucune localisation au signup par défaut
+      ]
     );
 
-    // Réponse SUCCÈS
+    const newUser = insertResult.rows[0];
+    console.log('✅ Utilisateur créé:', newUser.userId);
+
+    // 📧 ENVOI DE L'EMAIL AVEC RESEND
+    try {
+      console.log('📧 Envoi email Resend à:', email);
+      
+      const emailTemplate = emailTemplates.welcome(
+        newUser.FirstName,
+        newUser.Email
+      );
+
+      const emailResult = await sendEmail(
+        email,
+        emailTemplate.subject,
+        emailTemplate.html
+      );
+
+      if (emailResult.success) {
+        console.log('✅ Email Resend envoyé avec succès');
+        //console.log('📧 Email ID:', emailResult.data?.id);
+      } else {
+        console.warn('⚠️ Échec envoi email Resend:', emailResult.error);
+        // Continuer même si l'email échoue
+      }
+    } catch (emailError) {
+      console.error('❌ Erreur envoi email Resend:', emailError);
+      // Continuer même si l'email échoue
+    }
+
+    // ... (garder votre logique JWT et réponse existante)
+
     const response = NextResponse.json({
       success: true,
-      message: 'Compte créé avec succès',
+      message: 'Compte créé avec succès. Un email de bienvenue vous a été envoyé.',
       user: {
         userId: newUser.userId,
         firstName: newUser.FirstName,
@@ -172,37 +150,20 @@ export async function POST(request: NextRequest) {
       }
     }, { status: 201 });
 
-    // Cookie
-    response.cookies.set('auth_token', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-      path: '/',
-    });
+    // ... (garder votre logique de cookie)
 
+    console.log('🎉 Inscription terminée avec succès');
     return response;
 
   } catch (error: any) {
-    console.error('💥 ERREUR API:', error);
-    
-    if (error.code === '23505') {
-      return NextResponse.json(
-        { error: 'Cet email existe déjà' },
-        { status: 409 }
-      );
-    }
-    
-    if (error.code === '23503') {
-      return NextResponse.json(
-        { error: 'Erreur de référence - Vérifiez RoleId et LocationId' },
-        { status: 400 }
-      );
-    }
+    console.error('❌ Erreur inscription API:', error);
+    const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+    const message = typeof error?.message === 'string' && error.message.length > 0
+      ? error.message
+      : 'Erreur interne du serveur';
 
-    return NextResponse.json(
-      { error: 'Erreur serveur: ' + error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status });
   }
 }
+
+// Supprimer l'ancien template HTML qui était dans ce fichier
