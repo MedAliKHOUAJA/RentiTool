@@ -9,7 +9,7 @@ export default function Home() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push("/login");
+      router.push("/");
     }, 7000);
 
     return () => clearTimeout(timer);
@@ -46,7 +46,7 @@ export default function Home() {
         </div>
         
         <div className="mt-8 text-sm opacity-70">
-          Redirection vers la connexion...
+          Redirection vers la page principale...
         </div>
       </div>
     </div>
