@@ -1,0 +1,35 @@
+# 1. Se connecter
+az login
+
+# 2. Variables
+$RESOURCE_GROUP = "rg-sentiment-analysis"
+$NAMESPACE_NAME = "sb-rentitool"
+$TOPIC_NAME = "notifications"
+
+# 3. Créer le namespace
+az servicebus namespace create --name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP --sku Standard
+
+# 4. Créer le topic
+az servicebus topic create --name $TOPIC_NAME --namespace-name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP
+
+# 5. Créer les subscriptions
+az servicebus topic subscription create --name email-subscription --topic-name $TOPIC_NAME --namespace-name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP
+
+az servicebus topic subscription create --name inapp-subscription --topic-name $TOPIC_NAME --namespace-name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP
+
+az servicebus topic subscription create --name push-subscription --topic-name $TOPIC_NAME --namespace-name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP
+
+# 6. Créer la policy
+az servicebus namespace authorization-rule create --name RentiToolAppPolicy --namespace-name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP --rights Send Listen
+
+# 7. Récupérer la connection string
+az servicebus namespace authorization-rule keys list --name RentiToolAppPolicy --namespace-name $NAMESPACE_NAME --resource-group $RESOURCE_GROUP --query primaryConnectionString --output tsv
+
+#8. Crér queue
+az servicebus queue create `
+  --name notifications-queue `
+  --namespace-name sb-rentitool `
+  --resource-group rg-sentiment-analysis `
+  --max-delivery-count 10 `
+  --lock-duration PT5M `
+  --enable-dead-lettering-on-message-expiration true

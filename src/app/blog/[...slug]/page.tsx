@@ -257,7 +257,7 @@ const Page = ({
         key={post.id}
         className="relative aspect-w-3 aspect-h-4 rounded-3xl overflow-hidden group"
       >
-        <Link href={post.href as Route} />
+        <Link href={post.href} />
         <Image
           className="object-cover transform group-hover:scale-105 transition-transform duration-300"
           src={post.featuredImage}
@@ -282,7 +282,7 @@ const Page = ({
             <span className="font-normal truncate">{post.date}</span>
           </div>
         </div>
-        <Link href={post.href as Route} />
+        <Link href={post.href} />
       </div>
     );
   };

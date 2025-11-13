@@ -1,26 +1,135 @@
+"use client";
+
 import { Popover, Transition } from "@headlessui/react";
-import { Fragment } from "react";
-import Avatar from "@/shared/Avatar";
+import { Fragment, useState, useEffect } from "react";
 import SwitchDarkMode2 from "@/shared/SwitchDarkMode2";
-
-
 import { PathName } from "@/routers/types";
 import Link from "next/link";
 import { Route } from "next";
+import { useRouter } from "next/navigation";
+
 interface Props {
   className?: string;
 }
 
+interface User {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  roleId: number;
+  locationId: string;
+  governorate: string;
+  delegation: string;
+  postalCode: string;
+}
+
 export default function AvatarDropdown({ className = "" }: Props) {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Charger les données utilisateur
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          
+          // Charger l'image de profil depuis localStorage
+          const savedImage = localStorage.getItem(`profileImage_${userData.userId}`);
+          if (savedImage) {
+            setProfileImage(savedImage);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur chargement données utilisateur:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
+    
+    try {
+      console.log('🔄 Déconnexion en cours...');
+      
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('📨 Réponse API logout:', data);
+
+      if (response.ok && data.success) {
+        console.log('✅ Déconnexion réussie! Redirection vers /login');
+        // Délai plus long pour laisser le temps au Popover de se fermer complètement
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 300);
+      } else {
+        console.error('❌ Erreur déconnexion:', data.error);
+        alert('Erreur lors de la déconnexion');
+        setIsLoggingOut(false);
+      }
+    } catch (error) {
+      console.error('💥 Erreur de déconnexion:', error);
+      alert('Erreur de connexion au serveur');
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Obtenir les initiales pour l'avatar
+  const getInitials = () => {
+    if (!user) return "U";
+    return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
+  };
+
+  // Affichage de la localisation
+  const getLocationDisplay = () => {
+    if (!user) return 'Location inconnue';
+    
+    const { governorate, delegation } = user;
+    if (governorate && delegation) {
+      return `${delegation}, ${governorate}`;
+    } else if (governorate) {
+      return governorate;
+    } else if (delegation) {
+      return delegation;
+    }
+    return 'Location non renseignée';
+  };
+
   return (
     <>
       <Popover className={`AvatarDropdown relative flex ${className}`}>
         {({ open, close }) => (
           <>
             <Popover.Button
-              className={`self-center w-10 h-10 sm:w-12 sm:h-12 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none flex items-center justify-center`}
+              className={`self-center w-10 h-10 sm:w-12 sm:h-12 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none flex items-center justify-center overflow-hidden`}
             >
-              <Avatar sizeClass="w-8 h-8 sm:w-9 sm:h-9" />
+              {profileImage ? (
+                <img 
+                  src={profileImage} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm">
+                  {getInitials()}
+                </div>
+              )}
             </Popover.Button>
             <Transition
               as={Fragment}
@@ -35,11 +144,23 @@ export default function AvatarDropdown({ className = "" }: Props) {
                 <div className="overflow-hidden rounded-3xl shadow-lg ring-1 ring-black ring-opacity-5">
                   <div className="relative grid grid-cols-1 gap-6 bg-white dark:bg-neutral-800 py-7 px-6">
                     <div className="flex items-center space-x-3">
-                      <Avatar sizeClass="w-12 h-12" />
+                      {profileImage ? (
+                        <img 
+                          src={profileImage} 
+                          alt="Profile" 
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                          {getInitials()}
+                        </div>
+                      )}
 
                       <div className="flex-grow">
-                        <h4 className="font-semibold">Eden Smith</h4>
-                        <p className="text-xs mt-0.5">Los Angeles, CA</p>
+                        <h4 className="font-semibold">
+                          {user ? `${user.firstName} ${user.lastName}` : 'Chargement...'}
+                        </h4>
+                        <p className="text-xs mt-0.5">{getLocationDisplay()}</p>
                       </div>
                     </div>
 
@@ -47,7 +168,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 1 --------------------- */}
                     <Link
-                      href={"/account"}
+                       href={"/account/profile" as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >
@@ -82,7 +203,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     {/* ------------------ 2 --------------------- */}
                     <Link
-                      href={"/author" as PathName}
+                      href={"/my-rentals" as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >
@@ -132,9 +253,9 @@ export default function AvatarDropdown({ className = "" }: Props) {
                       </div>
                     </Link>
 
-                    {/* ------------------ 2 --------------------- */}
+                    {/* ------------------ 3 --------------------- */}
                     <Link
-                      href={"/account-savelists" as Route}
+                      href={"/tools-management" as Route}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                       onClick={() => close()}
                     >
@@ -161,7 +282,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
 
                     <div className="w-full border-b border-neutral-200 dark:border-neutral-700" />
 
-                    {/* ------------------ 2 --------------------- */}
+                    {/* ------------------ 4 --------------------- */}
                     <div className="flex items-center justify-between p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50">
                       <div className="flex items-center">
                         <div className="flex items-center justify-center flex-shrink-0 text-neutral-500 dark:text-neutral-300">
@@ -202,7 +323,7 @@ export default function AvatarDropdown({ className = "" }: Props) {
                       <SwitchDarkMode2 />
                     </div>
 
-                    {/* ------------------ 2 --------------------- */}
+                    {/* ------------------ 5 --------------------- */}
                     <Link
                       href={"/#"  as PathName}
                       className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
@@ -265,11 +386,14 @@ export default function AvatarDropdown({ className = "" }: Props) {
                       </div>
                     </Link>
 
-                    {/* ------------------ 2 --------------------- */}
-                    <Link
-                      href={"/#"  as PathName}
-                      className="flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
-                      onClick={() => close()}
+                    {/* ------------------ LOGOUT --------------------- */}
+                    <button
+                      onClick={() => {
+                        close();
+                        handleLogout();
+                      }}
+                      disabled={isLoggingOut}
+                      className="w-full flex items-center p-2 -m-3 transition duration-150 ease-in-out rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed text-left"
                     >
                       <div className="flex items-center justify-center flex-shrink-0 text-neutral-500 dark:text-neutral-300">
                         <svg
@@ -303,9 +427,11 @@ export default function AvatarDropdown({ className = "" }: Props) {
                         </svg>
                       </div>
                       <div className="ml-4">
-                        <p className="text-sm font-medium ">{"Log out"}</p>
+                        <p className="text-sm font-medium">
+                          {isLoggingOut ? "Déconnexion..." : "Log out"}
+                        </p>
                       </div>
-                    </Link>
+                    </button>
                   </div>
                 </div>
               </Popover.Panel>

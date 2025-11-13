@@ -42,4 +42,18 @@ export async function testConnection(): Promise<boolean> {
     console.error('❌ Échec connexion DB:', err);
     throw err;
   }
+
+
+}
+
+/**
+ * Fermer le pool (utile pour les tests ou shutdown)
+ */
+export async function closePool(): Promise<void> {
+  try {
+    await pool.end();
+    console.log('🛑 [Database] Pool closed');
+  } catch (error: any) {
+    console.error('❌ [Database] Error closing pool:', error.message);
+  }
 }

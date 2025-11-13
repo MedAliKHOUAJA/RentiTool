@@ -9,4 +9,10 @@ export interface User {
   locationId: number;
   locationName?: string;
   starRating?: number;
+  profileImageId?: number; 
+  profilePictureUrl?: string; 
 }
+
+
+
+

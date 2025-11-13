@@ -1,0 +1,26 @@
+{
+    "name": "rentitool-notification-consumer",
+    "version": "1.0.0",
+    "description": "Azure Function to process RentiTool notifications",
+    "main": "dist/NotificationProcessor/index.js",
+    "scripts": {
+      "build": "tsc",
+      "watch": "tsc --watch",
+      "clean": "rimraf dist",
+      "prestart": "npm run build",
+      "start": "func start",
+      "test": "echo \"No tests yet\""
+    },
+    "dependencies": {
+      "@azure/communication-email": "^1.0.0",
+      "@azure/functions": "^4.5.1",
+      "pg": "^8.11.3"
+    },
+    "devDependencies": {
+      "@types/node": "^20.10.0",
+      "@types/pg": "^8.10.9",
+      "azure-functions-core-tools": "^4.0.5455",
+      "rimraf": "^5.0.5",
+      "typescript": "^5.3.3"
+    }
+  }

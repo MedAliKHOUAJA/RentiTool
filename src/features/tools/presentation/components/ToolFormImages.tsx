@@ -1,9 +1,10 @@
 import React from "react";
-import { ImageItem } from "../../../tools/application/use-cases/upload-tool-image.use-case";
+import { ImageDto } from "../../domain/image";
+
 
 interface ToolFormImagesProps {
   stagedImages: Array<{ id: string; preview: string }>;
-  uploadedImages: ImageItem[];
+  uploadedImages: ImageDto[];
   uploading: boolean;
   error: string | null;
   onAddImage: (file: File) => void;
@@ -88,7 +89,7 @@ export function ToolFormImages({
 
         {/* Uploaded images */}
         {uploadedImages.map((img) => (
-          <li key={String(img.id)} className="relative group">
+          <li key={String(img.imageId)} className="relative group">
             <img
               src={img.url}
               alt="tool"
@@ -102,14 +103,14 @@ export function ToolFormImages({
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 rounded-lg">
               <button
                 type="button"
-                onClick={() => onSetPrimary(img.id)}
+                onClick={() => onSetPrimary(img.imageId)}
                 className="px-3 py-1.5 text-xs rounded-full bg-white text-neutral-900 hover:opacity-90"
               >
                 Set primary
               </button>
               <button
                 type="button"
-                onClick={() => onDeleteImage(img.id)}
+                onClick={() => onDeleteImage(img.imageId)}
                 className="px-3 py-1.5 text-xs rounded-full bg-red-600 text-white hover:opacity-90"
               >
                 Delete

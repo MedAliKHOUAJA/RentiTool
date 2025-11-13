@@ -1,4 +1,3 @@
-// src/app/signup/page.tsx
 'use client';
 import { useState } from 'react';
 
@@ -63,6 +62,11 @@ export default function SignUpPage() {
         setLoading(false);
         return;
       }
+      if (formData.password.length < 8 || !/[0-9]/.test(formData.password)) {
+        setMessage('❌ Le mot de passe doit contenir au moins 8 caractères et un chiffre');
+        setLoading(false);
+        return;
+      }
 
       // Préparer les données
       const submitData = {
@@ -71,6 +75,7 @@ export default function SignUpPage() {
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         userType: formData.userType,
         city: formData.city // Ajout de la ville
       };
@@ -209,10 +214,13 @@ export default function SignUpPage() {
               value={formData.password}
               onChange={handleChange}
               required
-              minLength={6}
+              minLength={8}
               className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Minimum 6 caractères"
+              placeholder="Minimum 8 caractères, au moins un chiffre"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Utilisez au moins 8 caractères et incluez un chiffre.
+            </p>
           </div>
 
           <div>

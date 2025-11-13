@@ -73,6 +73,10 @@ const accountChildMenus: NavItemType[] = [
   { id: ncNanoId(), href: "/account/profile", name: "Mon Profil" },
   { id: ncNanoId(), href: "/account/dashboard", name: "Mon Tableau de Bord" },
   { id: ncNanoId(), href: "/account/cards", name: "Mes Cartes de Visite" },
+  { id: ncNanoId(), href: "/my-rentals", name: "Mes Locations" },
+  { id: ncNanoId(), href: "/my-payments", name: "Mes Paiements" },
+  { id: ncNanoId(), href: "/tools-management", name: "Gestion des Outils" },
+  { id: ncNanoId(), href: "/payment-management", name: "Gestion des Paiements" },
 ];
 
 const otherPageChildMenus: NavItemType[] = [
@@ -171,7 +175,7 @@ export const NAVIGATION_DEMO: NavItemType[] = [
   },
   {
     id: ncNanoId(),
-    href: "/account/profile",
+    href: "/profile",
     name: "Mon Compte",
     type: "dropdown",
     children: accountChildMenus,

@@ -1,4 +1,5 @@
-// src/hooks/useAuth.ts
+'use client';
+
 import { useState, useEffect } from 'react';
 
 export function useAuth() {
@@ -6,23 +7,57 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    
+    console.log('🔐 [useAuth] useEffect started');
+
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me');
+        console.log('🔐 [useAuth] Fetching /api/auth/me...');
+        
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+
+        console.log('🔐 [useAuth] Response:', response.status);
+
+        if (!isMounted) return;
+
         if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
+          const data = await response.json();
+          console.log('✅ [useAuth] Data received:', data);
+          
+          // ✅ CORRECTION : Extraire data.user si la structure l'inclut
+          const userData = data.user || data;
+          console.log('✅ [useAuth] User data:', userData);
+          
+          if (isMounted) {
+            setUser(userData);
+          }
         } else {
-          setUser(null);
+          console.log('❌ [useAuth] Response not OK');
+          if (isMounted) {
+            setUser(null);
+          }
         }
       } catch (error) {
-        setUser(null);
+        console.error('❌ [useAuth] Error:', error);
+        if (isMounted) {
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        console.log('🔐 [useAuth] Setting loading=false');
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return { user, loading };

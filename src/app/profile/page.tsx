@@ -1,8 +1,8 @@
-// src/app/profile/page.tsx
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { loadFaceModels, startCamera, stopCamera, computeEmbeddingFromVideo, hasMediaDevices } from '@/utils/face';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface User {
   userId: string;
@@ -17,7 +17,28 @@ interface User {
   postalCode: string;
 }
 
-export default function ProfilePage() {
+// Composant séparé pour gérer les search params
+function OnboardingHandler({ 
+  profileImage, 
+  user, 
+  setShowOnboarding 
+}: { 
+  profileImage: string | null; 
+  user: User | null;
+  setShowOnboarding: (show: boolean) => void;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const flag = searchParams.get('onboarding');
+    const shouldShow = flag === '1' || !profileImage || !user?.firstName || !user?.lastName;
+    if (shouldShow) setShowOnboarding(true);
+  }, [searchParams, profileImage, user, setShowOnboarding]);
+
+  return null;
+}
+
+function ProfilePageContent() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,27 +51,34 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Fonction pour uploader l'image vers le serveur
-  const uploadProfileImage = async (base64Image: string) => {
+  // Onboarding state (post-login)
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingMessage, setOnboardingMessage] = useState('');
+  const [onboardingError, setOnboardingError] = useState('');
+  const [onboardingFields, setOnboardingFields] = useState<{ firstName: string; lastName: string; phone: string }>({ firstName: '', lastName: '', phone: '' });
+  const [signupDate] = useState<string>(() => new Date().toLocaleDateString());
+
+  // Édition de la localisation
+  const [isLocationEditing, setIsLocationEditing] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationResults, setLocationResults] = useState<Array<{ LocationId: number; Governorate: string; Delegation: string; Postalcode: string }>>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationSaveLoading, setLocationSaveLoading] = useState(false);
+
+  // Fonction pour uploader l'image vers le serveur (FormData)
+  const uploadProfileImage = async (file: File) => {
     try {
-      console.log('🔄 Envoi de l\'image au serveur...');
-      
+      console.log('📄 Envoi de l\'image au serveur...');
+      const formData = new FormData();
+      formData.append('image', file);
       const response = await fetch('/api/profile/image', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Image
-        }),
+        body: formData,
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors de la sauvegarde de l\'image');
       }
-
       console.log('✅ Image sauvegardée avec succès:', data.message);
       return data;
     } catch (error) {
@@ -63,46 +91,30 @@ export default function ProfilePage() {
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       alert('Veuillez sélectionner une image valide (JPEG, PNG, etc.)');
       return;
     }
-
     if (file.size > 2 * 1024 * 1024) {
       alert('L\'image ne doit pas dépasser 2MB');
       return;
     }
-
     setIsUploading(true);
-
     try {
+      // Prévisualisation locale
       const reader = new FileReader();
-      
-      reader.onloadend = async () => {
-        try {
-          const base64String = reader.result as string;
-          setProfileImage(base64String);
-          
-          if (user) {
-            localStorage.setItem(`profileImage_${user.userId}`, base64String);
-            console.log('💾 Image sauvegardée dans le localStorage');
-          }
-          
-          await uploadProfileImage(base64String);
-          console.log('🎉 Photo de profil mise à jour avec succès!');
-          
-        } catch (uploadError) {
-          console.error('❌ Erreur lors de la sauvegarde serveur:', uploadError);
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfileImage(base64String);
+        if (user && typeof window !== 'undefined') {
+          localStorage.setItem(`profileImage_${user.userId}`, base64String);
+          console.log('💾 Image sauvegardée dans le localStorage');
         }
       };
-      
-      reader.onerror = () => {
-        throw new Error('Erreur lors de la lecture du fichier');
-      };
-      
       reader.readAsDataURL(file);
-      
+      // Envoi au serveur via FormData
+      await uploadProfileImage(file);
+      console.log('🎉 Photo de profil mise à jour avec succès!');
     } catch (error) {
       console.error('💥 Erreur upload image:', error);
       alert('Erreur lors du téléchargement de l\'image');
@@ -134,9 +146,7 @@ export default function ProfilePage() {
   // Sauvegarder les modifications
   const saveField = async (field: string) => {
     if (!user || !editedData[field as keyof User]) return;
-
     setSaveLoading(field);
-
     try {
       const updateData = {
         firstName: field === 'firstName' ? editedData.firstName : user.firstName,
@@ -144,7 +154,6 @@ export default function ProfilePage() {
         email: field === 'email' ? editedData.email : user.email,
         phone: field === 'phone' ? editedData.phone : user.phone,
       };
-
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
@@ -152,13 +161,10 @@ export default function ProfilePage() {
         },
         body: JSON.stringify(updateData),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors de la mise à jour');
       }
-
       // Mettre à jour l'état local en s'assurant que les champs obligatoires restent des strings
       setUser(prev => prev ? {
         ...prev,
@@ -169,334 +175,330 @@ export default function ProfilePage() {
       } : null);
       setEditingField(null);
       setEditedData({});
-      
       console.log(`✅ ${field} mis à jour avec succès`);
-
-    } catch (error) {
-      console.error(`❌ Erreur mise à jour ${field}:`, error);
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`Erreur lors de la mise à jour: ${message}`);
+    } catch (e) {
+      console.error('Erreur mise à jour', e);
     } finally {
       setSaveLoading(null);
     }
   };
 
-  // Gestion des changements d'input
-  const handleInputChange = (field: string, value: string) => {
-    setEditedData(prev => ({ ...prev, [field]: value }));
+  // -----------------------------
+  // Reconnaissance faciale (enrôlement)
+  // -----------------------------
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [faceLoading, setFaceLoading] = useState(false);
+  const [faceMessage, setFaceMessage] = useState<string>('');
+  const [faceError, setFaceError] = useState<string>('');
+  const [embedding, setEmbedding] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) stopCamera(videoRef.current);
+    };
+  }, []);
+
+  const handleStartCamera = async () => {
+    setFaceError('');
+    setFaceMessage('');
+    if (!hasMediaDevices()) {
+      setFaceError('La caméra n\'est pas disponible dans ce navigateur.');
+      return;
+    }
+    try {
+      setFaceLoading(true);
+      await loadFaceModels('/models');
+      if (!videoRef.current) return;
+      await startCamera(videoRef.current);
+      setCameraOn(true);
+      setFaceMessage('Caméra démarrée. Regardez bien en face de l\'écran.');
+    } catch (e) {
+      console.error('Camera start error', e);
+      setFaceError('Impossible de démarrer la caméra. Autorisez l\'accès et réessayez.');
+    } finally {
+      setFaceLoading(false);
+    }
   };
 
-  // Déconnexion
-  const handleLogout = () => {
-    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    window.location.href = '/login';
+  const handleCaptureFace = async () => {
+    setFaceError('');
+    setFaceMessage('');
+    if (!videoRef.current) return;
+    try {
+      setFaceLoading(true);
+      const emb = await computeEmbeddingFromVideo(videoRef.current, 30, 150);
+      if (!emb) {
+        setFaceError('Visage non détecté. Essayez avec une meilleure luminosité.');
+        return;
+      }
+      setEmbedding(emb);
+      setFaceMessage('Visage détecté. Prêt à sauvegarder.');
+    } catch (e) {
+      console.error('Compute embedding error', e);
+      setFaceError('Erreur durant la détection du visage.');
+    } finally {
+      setFaceLoading(false);
+    }
   };
 
-  // Initiales pour l'avatar
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+  const handleSaveFaceEmbedding = async () => {
+    setFaceError('');
+    setFaceMessage('');
+    if (!embedding) {
+      setFaceError('Aucune empreinte faciale à sauvegarder.');
+      return;
+    }
+    try {
+      setFaceLoading(true);
+      const res = await fetch('/api/auth/face-setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embedding }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur serveur');
+      }
+      setFaceMessage('Reconnaissance faciale configurée avec succès.');
+    } catch (e: any) {
+      console.error('Save embedding error', e);
+      setFaceError(e?.message || 'Erreur lors de la sauvegarde');
+    } finally {
+      setFaceLoading(false);
+    }
   };
 
-  // Affichage de la localisation
-  const getLocationDisplay = () => {
-    if (!user) return 'Non renseignée';
-    
-    const { governorate, delegation, postalCode } = user;
-    const parts = [];
-    
-    if (governorate) parts.push(governorate);
-    if (delegation) parts.push(delegation);
-    if (postalCode) parts.push(`(${postalCode})`);
-    
-    return parts.length > 0 ? parts.join(' - ') : 'Non renseignée';
+  const handleStopCamera = () => {
+    if (videoRef.current) stopCamera(videoRef.current);
+    setCameraOn(false);
   };
 
-  // Composant d'affichage/édition d'un champ
-  const renderEditableField = (field: string, label: string, value: string, type: string = 'text') => {
-    const isEditing = editingField === field;
-    const isLoading = saveLoading === field;
-
-    return (
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <label className="text-sm font-medium text-gray-700">{label}</label>
-          </div>
-          
-          {!isEditing ? (
-            <button
-              onClick={() => startEditing(field, value)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-            >
-              Modifier
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => saveField(field)}
-                disabled={isLoading}
-                className="text-green-600 hover:text-green-800 text-sm font-medium transition-colors disabled:opacity-50"
-              >
-                {isLoading ? '...' : 'Sauvegarder'}
-              </button>
-              <button
-                onClick={cancelEditing}
-                className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          )}
-        </div>
-
-        {isEditing ? (
-          <div className="space-y-3">
-            <input
-              type={type}
-              value={editedData[field as keyof User] || value}
-              onChange={(e) => handleInputChange(field, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder={`Entrez votre ${label.toLowerCase()}`}
-              autoFocus
-            />
-            {field === 'email' && (
-              <p className="text-xs text-gray-500">Vous devrez confirmer votre nouvel email</p>
-            )}
-          </div>
-        ) : (
-          <p className="text-lg font-semibold text-gray-900">
-            {value || 'Non renseigné'}
-          </p>
-        )}
-      </div>
-    );
-  };
-
-  // Chargement du profil
+  // Charger profil et image au montage
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        console.log('🔄 Chargement du profil...');
-        const response = await fetch('/api/profile');
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            console.log('❌ Non authentifié, redirection vers login');
-            router.push('/login');
-            return;
-          }
-          throw new Error(`Erreur ${response.status} lors du chargement du profil`);
+        setLoading(true);
+        const [profileRes, imageRes] = await Promise.all([
+          fetch('/api/profile'),
+          fetch('/api/profile/image'),
+        ]);
+        const profileData = await profileRes.json();
+        const imageData = await imageRes.json();
+        if (profileRes.ok) {
+          setUser(profileData);
+          setOnboardingFields({
+            firstName: profileData.firstName || '',
+            lastName: profileData.lastName || '',
+            phone: profileData.phone || '',
+          });
+        } else {
+          setError(profileData.error || 'Erreur lors du chargement du profil');
         }
-        
-        const userData = await response.json();
-        console.log('✅ Profil chargé:', userData);
-        setUser(userData);
-        
-        const savedImage = localStorage.getItem(`profileImage_${userData.userId}`);
-        if (savedImage) {
-          setProfileImage(savedImage);
-          console.log('🖼️ Image de profil chargée depuis le localStorage');
+        if (imageRes.ok && imageData?.image) {
+          setProfileImage(imageData.image);
         }
-        
-      } catch (error) {
-        console.error('💥 Erreur chargement profil:', error);
-        setError('Impossible de charger le profil');
+      } catch (e) {
+        console.error('Erreur chargement profil', e);
+        setError('Erreur de chargement du profil');
       } finally {
         setLoading(false);
       }
     };
-
     fetchProfile();
-  }, [router]);
+  }, []);
 
-  // États de chargement
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Chargement de votre profil...</p>
-        </div>
-      </div>
-    );
-  }
+  // Soumettre onboarding (photo + détails)
+  const submitOnboarding = async () => {
+    try {
+      setOnboardingError('');
+      setOnboardingMessage('');
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center max-w-md">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Erreur de chargement</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Réessayer
-          </button>
-        </div>
-      </div>
-    );
-  }
+      // Mettre à jour les infos de base
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: onboardingFields.firstName,
+          lastName: onboardingFields.lastName,
+          email: user?.email || '',
+          phone: onboardingFields.phone,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Mise à jour profil échouée');
+      setUser(prev => prev ? {
+        ...prev,
+        firstName: onboardingFields.firstName,
+        lastName: onboardingFields.lastName,
+        phone: onboardingFields.phone,
+      } : null);
 
-  if (!user) {
-    return null;
-  }
+      setOnboardingMessage('Profil mis à jour. Vous pouvez aussi ajouter une photo.');
+    } catch (e: any) {
+      console.error('Onboarding error', e);
+      setOnboardingError(e?.message || 'Erreur lors de la mise à jour');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Mon Profil
-            </h1>
-            <p className="text-gray-600 mt-2 text-lg">Bienvenue dans votre espace personnel</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-white text-red-600 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-200 hover:bg-red-50"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Déconnexion
-          </button>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-10 px-4">
+      {/* Handler pour les search params avec Suspense */}
+      <Suspense fallback={null}>
+        <OnboardingHandler 
+          profileImage={profileImage} 
+          user={user} 
+          setShowOnboarding={setShowOnboarding} 
+        />
+      </Suspense>
 
-        {/* Carte principale */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Colonne de gauche - Photo et infos principales */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-              {/* Photo de profil */}
-              <div className="text-center mb-6">
-                <div className="relative inline-block">
-                  <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg relative overflow-hidden">
-                    {profileImage ? (
-                      <img 
-                        src={profileImage} 
-                        alt="Photo de profil" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      getInitials(user.firstName, user.lastName)
-                    )}
-                  </div>
-                  
-                  {/* Badge de rôle */}
-                  <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-                    {user.roleId === 1 ? '👑 Admin' : 
-                     user.roleId === 2 ? '🏠 Propriétaire' : 
-                     user.roleId === 3 ? '🔑 Locataire' : '👤 Utilisateur'}
-                  </div>
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow p-6">
+        <h1 className="text-2xl font-bold mb-2">Profil</h1>
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+        )}
 
-                  {/* Bouton de modification de photo */}
-                  <button
-                    onClick={triggerFileInput}
-                    disabled={isUploading}
-                    className="absolute -bottom-2 -right-2 bg-white text-blue-600 p-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 border border-blue-200"
-                  >
-                    {isUploading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    )}
-                  </button>
-
+        {showOnboarding && (
+          <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-indigo-800">Complétez votre profil</h2>
+                <p className="text-sm text-indigo-700">Date d'inscription: {signupDate}</p>
+              </div>
+              <button onClick={() => setShowOnboarding(false)} className="text-indigo-700 text-sm">Fermer</button>
+            </div>
+            {onboardingError && (
+              <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">{onboardingError}</div>
+            )}
+            {onboardingMessage && (
+              <div className="mt-3 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded text-sm">{onboardingMessage}</div>
+            )}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm text-slate-700">Prénom</label>
+                <input
+                  className="w-full border rounded-lg px-3 py-2"
+                  value={onboardingFields.firstName}
+                  onChange={(e) => setOnboardingFields(s => ({ ...s, firstName: e.target.value }))}
+                />
+                <label className="text-sm text-slate-700">Nom</label>
+                <input
+                  className="w-full border rounded-lg px-3 py-2"
+                  value={onboardingFields.lastName}
+                  onChange={(e) => setOnboardingFields(s => ({ ...s, lastName: e.target.value }))}
+                />
+                <label className="text-sm text-slate-700">Téléphone</label>
+                <input
+                  className="w-full border rounded-lg px-3 py-2"
+                  value={onboardingFields.phone}
+                  onChange={(e) => setOnboardingFields(s => ({ ...s, phone: e.target.value }))}
+                />
+                <button onClick={submitOnboarding} className="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white">Sauvegarder les informations</button>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-700">Photo de profil</label>
+                <div className="flex items-center gap-3">
+                  <button onClick={triggerFileInput} className="px-4 py-2 rounded-lg bg-blue-600 text-white">Télécharger une photo</button>
                   <input
-                    type="file"
                     ref={fileInputRef}
-                    onChange={handleImageUpload}
+                    type="file"
                     accept="image/*"
                     className="hidden"
+                    onChange={handleImageUpload}
                   />
                 </div>
-
-                <h2 className="text-2xl font-bold text-gray-900 mt-4">
-                  {user.firstName} {user.lastName}
-                </h2>
-                <p className="text-gray-600 mt-1">{user.email}</p>
-              </div>
-
-              {/* Stats rapides */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                  <span className="text-gray-600">Membre depuis</span>
-                  <span className="font-semibold text-blue-600">2024</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
-                  <span className="text-gray-600">Statut</span>
-                  <span className="font-semibold text-green-600">Actif</span>
-                </div>
+                {profileImage && (
+                  <img src={profileImage} alt="Profil" className="w-20 h-20 rounded-full object-cover" />
+                )}
               </div>
             </div>
           </div>
+        )}
 
-          {/* Colonne de droite - Détails du profil */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-bold text-gray-900">Informations personnelles</h3>
-                <div className="text-sm text-gray-500">
-                  Cliquez sur "Modifier" pour modifier chaque information
-                </div>
-              </div>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <button onClick={triggerFileInput} className="px-4 py-2 rounded-lg bg-blue-600 text-white">
+              Changer la photo
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+            <button onClick={handleStartCamera} disabled={faceLoading} className="px-4 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-50">
+              {faceLoading ? 'Démarrage…' : 'Configurer reconnaissance faciale'}
+            </button>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Champs éditables */}
-                {renderEditableField('firstName', 'Prénom', user.firstName)}
-                {renderEditableField('lastName', 'Nom', user.lastName)}
-                {renderEditableField('email', 'Email', user.email, 'email')}
-                {renderEditableField('phone', 'Téléphone', user.phone || '', 'tel')}
+          {profileImage && (
+            <img src={profileImage} alt="Profil" className="w-32 h-32 rounded-full object-cover" />
+          )}
 
-                {/* Localisation (non éditable pour l'instant) */}
-                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100 md:col-span-2">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-indigo-100 rounded-lg">
-                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </div>
-                    <label className="text-sm font-medium text-gray-700">Localisation</label>
-                  </div>
-                  <p className="text-lg font-semibold text-gray-900">{getLocationDisplay()}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Pour modifier votre localisation, contactez l'administrateur
-                  </p>
-                </div>
+          {user && (
+            <div className="text-sm text-slate-700">
+              <div>Nom: {user.firstName} {user.lastName}</div>
+              <div>Email: {user.email}</div>
+              <div>Téléphone: {user.phone || '—'}</div>
+            </div>
+          )}
+        </div>
 
-                {/* Rôle (non éditable) */}
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                    </div>
-                    <label className="text-sm font-medium text-gray-700">Rôle</label>
-                  </div>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {user.roleId === 1 ? 'Administrateur' : 
-                     user.roleId === 2 ? 'Propriétaire' : 
-                     user.roleId === 3 ? 'Locataire' : 'Utilisateur'}
-                  </p>
-                </div>
-              </div>
+        {/* Section Configuration Reconnaissance Faciale */}
+        <div className="mt-8 border-t pt-6">
+          <h2 className="text-lg font-semibold text-slate-800 mb-3">Configuration de la reconnaissance faciale</h2>
+          {faceError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{faceError}</div>
+          )}
+          {faceMessage && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{faceMessage}</div>
+          )}
+
+          <div className="space-y-4">
+            <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+              <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+            </div>
+
+            <div className="flex gap-3">
+              {!cameraOn ? (
+                <button onClick={handleStartCamera} disabled={faceLoading} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50">
+                  {faceLoading ? 'Démarrage…' : 'Démarrer la caméra'}
+                </button>
+              ) : (
+                <button onClick={handleStopCamera} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800">Arrêter la caméra</button>
+              )}
+
+              <button onClick={handleCaptureFace} disabled={faceLoading || !cameraOn} className="px-4 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-50">
+                {faceLoading ? 'Analyse…' : 'Capturer le visage'}
+              </button>
+
+              <button onClick={handleSaveFaceEmbedding} disabled={faceLoading || !embedding} className="px-4 py-2 rounded-lg bg-green-600 text-white disabled:opacity-50">
+                {faceLoading ? 'Sauvegarde…' : 'Sauvegarder'}
+              </button>
+            </div>
+
+            <div className="text-sm text-slate-500">
+              Conseil: assurez-vous d'être bien éclairé, face à la caméra, sans lunettes opaques.
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Chargement du profil...</p>
+        </div>
+      </div>
+    }>
+      <ProfilePageContent />
+    </Suspense>
   );
 }
