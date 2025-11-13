@@ -1,37 +1,62 @@
-// src/features/Cards/actions/Cards.ts
 'use server';
 
 import { createCardSchema, CreateCardFormData } from '@/features/Cards/schemas/Cards';
 import { db } from '@/app/api/cards/db';
 import { getCurrentUserId } from '@/lib/auth-jwt-server';
 import { z } from 'zod';
+import { User } from 'next-auth';
 
 // ✅ Get current logged-in user
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<User | null> {
   try {
-    const userId = await getCurrentUserId();
+    console.log('🔄 Appel API /api/auth/me...');
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/auth/me`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Important pour envoyer les cookies
+      cache: 'no-store',
+    });
 
-    const result = await db.query(
-      `SELECT 
-         u."userId", u."FirstName", u."LastName", u."Email", u."Phone",
-         l."Governorate", l."Delegation", l."Postalcode"
-       FROM public."User" u
-       LEFT JOIN public."Locations" l ON u."LocationId" = l."LocationId"
-       WHERE u."userId" = $1`,
-      [userId]
-    );
+    console.log('📊 Réponse API /api/auth/me:', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText
+    });
 
-    if (result.rows.length === 0) {
-      throw new Error('User not found');
+    if (!response.ok) {
+      console.error('❌ Erreur API /api/auth/me:', response.status, response.statusText);
+      
+      if (response.status === 401) {
+        console.log('🔐 Non authentifié - redirection vers login');
+        // Vous pouvez rediriger ici ou laisser le composant gérer
+        return null;
+      }
+      
+      if (response.status === 404) {
+        console.log('❌ Utilisateur non trouvé en base');
+        return null;
+      }
+      
+      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
     }
 
-    return result.rows[0];
+    const data = await response.json();
+    console.log('✅ Données utilisateur récupérées:', data);
+
+    if (!data.success || !data.user) {
+      console.error('❌ Format de réponse invalide:', data);
+      return null;
+    }
+
+    return data.user;
   } catch (error) {
-    console.error('Error fetching current user:', error);
-    throw error;
+    console.error('💥 Erreur getCurrentUser:', error);
+    return null;
   }
 }
-
 // ✅ FIXED: createCard - NO location handling at all
 export async function createCard(formData: FormData) {
   try {

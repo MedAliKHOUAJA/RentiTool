@@ -1,5 +1,6 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import Alert from "@/components/Alert";
 import SimilarityCircle from "@/components/SimilarityCircle";
 import { useCreateTool } from "../../../tools/application/hooks/useCreateTool";
@@ -8,14 +9,15 @@ import { useFraudCheck } from "../../../tools/application/hooks/useFraudCheck";
 import { ToolFormBasicInfo } from "./ToolFormBasicInfo";
 import { ToolFormPricing } from "./ToolFormPricing";
 import { ToolFormImages } from "./ToolFormImages";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AddToolFormProps {
   onSuccess: () => void;
 }
 
 export function AddToolForm({ onSuccess }: AddToolFormProps) {
-  // ✅ Get current user session
-  const { data: session, status } = useSession();
+  // ✅ Utiliser useAuth au lieu de useSession
+  const { user, loading: authLoading } = useAuth();
   
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -51,64 +53,86 @@ export function AddToolForm({ onSuccess }: AddToolFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ✅ Check if user is authenticated
-    if (!session?.user?.email) {
-      alert("You must be logged in to create a tool");
+    // ✅ Vérifier l'authentification avec useAuth
+    if (!user?.userId) {
+      alert("Vous devez être connecté pour créer un outil");
       return;
     }
 
-    // ✅ Include ownerId in the tool data
-    const toolId = await create(
-      {
-        title,
-        description,
-        brand,
-        model,
-        rentalPricePerDay: rentalPricePerDay ? Number(rentalPricePerDay) : undefined,
-        categoryId: categoryId ? Number(categoryId) : undefined,
-        subCategoryId: subCategoryId ? Number(subCategoryId) : undefined,
-        isActive,
-        ownerId: session.user.id, 
-      },
-      stagedImages.map((s) => s.file)
-    );
+    // ✅ Validation des champs requis
+    if (!title.trim() || !description.trim() || !rentalPricePerDay) {
+      alert("Veuillez remplir tous les champs obligatoires (titre, description, prix)");
+      return;
+    }
 
-    if (toolId) {
-      setCreatedToolId(toolId);
+    // ✅ Vérifier la fraude avant de soumettre
+    if (fraudCheck.status === "fraud") {
+      alert("Veuillez corriger les incohérences détectées avant de soumettre");
+      return;
+    }
 
-      // If images weren't uploaded during creation, upload them now
-      if (stagedImages.length > 0 && !images.length) {
-        for (const staged of stagedImages) {
-          await upload(staged.file);
+    try {
+      // ✅ Inclure ownerId dans les données
+      const toolId = await create(
+        {
+          title: title.trim(),
+          description: description.trim(),
+          brand: brand.trim(),
+          model: model.trim(),
+          rentalPricePerDay: rentalPricePerDay ? Number(rentalPricePerDay) : undefined,
+          categoryId: categoryId ? Number(categoryId) : undefined,
+          subCategoryId: subCategoryId ? Number(subCategoryId) : undefined,
+          isActive,
+          ownerId: user.userId, 
+        },
+        stagedImages.map((s) => s.file)
+      );
+
+      if (toolId) {
+        setCreatedToolId(toolId);
+
+        // Si les images n'ont pas été uploadées pendant la création, les uploader maintenant
+        if (stagedImages.length > 0 && !images.length) {
+          try {
+            for (const staged of stagedImages) {
+              await upload(staged.file);
+            }
+          } catch (uploadError) {
+            console.error("Erreur lors de l'upload des images:", uploadError);
+            alert("L'outil a été créé mais certaines images n'ont pas pu être uploadées");
+          }
         }
-      }
 
-      // Clear form
-      setTitle("");
-      setDescription("");
-      setBrand("");
-      setModel("");
-      setRentalPricePerDay("");
-      setCategoryId("");
-      setSubCategoryId("");
-      setStagedImages([]);
-      
-      // Small delay to show success message before clearing
-      setTimeout(() => {
-        setCreatedToolId(null);
-        onSuccess();
-      }, 1500);
+        // Réinitialiser le formulaire
+        setTitle("");
+        setDescription("");
+        setBrand("");
+        setModel("");
+        setRentalPricePerDay("");
+        setCategoryId("");
+        setSubCategoryId("");
+        setStagedImages([]);
+        
+        // Petit délai pour afficher le message de succès avant de nettoyer
+        setTimeout(() => {
+          setCreatedToolId(null);
+          onSuccess();
+        }, 1500);
+      }
+    } catch (submitError) {
+      console.error("Erreur lors de la création de l'outil:", submitError);
+      // L'erreur sera gérée par le hook useCreateTool
     }
   };
 
   const handleAddImage = (file: File) => {
     if (!createdToolId) {
-      // Stage locally before tool is created
+      // Stocker localement avant la création de l'outil
       const id = Math.random().toString(36).slice(2);
       const preview = URL.createObjectURL(file);
       setStagedImages((prev) => [...prev, { id, file, preview }]);
     } else {
-      // Upload immediately if tool already exists
+      // Uploader immédiatement si l'outil existe déjà
       upload(file);
     }
   };
@@ -121,11 +145,29 @@ export function AddToolForm({ onSuccess }: AddToolFormProps) {
     });
   };
 
-  // ✅ Show loading state while session is loading
-  if (status === 'loading') {
+  // ✅ Afficher l'état de chargement pendant l'authentification
+  if (authLoading) {
     return (
       <div className="flex justify-center items-center py-20">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <span className="ml-4 text-neutral-600">Chargement...</span>
+      </div>
+    );
+  }
+
+  // ✅ Vérifier si l'utilisateur est connecté
+  if (!user) {
+    return (
+      <div className="text-center py-10">
+        <Alert variant="error" title="Authentification requise">
+          <p>Vous devez être connecté pour créer un outil.</p>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            Se connecter
+          </button>
+        </Alert>
       </div>
     );
   }
@@ -133,12 +175,12 @@ export function AddToolForm({ onSuccess }: AddToolFormProps) {
   return (
     <div className="lg:flex lg:space-x-10 mt-8">
       <form onSubmit={handleSubmit} className="w-full lg:w-2/3 space-y-8">
-        {/* Fraud Check Status */}
+        {/* Vérification de fraude */}
         {fraudCheck.status === "checking" && (
-          <Alert variant="info" title="Checking image/text match…" />
+          <Alert variant="info" title="Vérification image/texte en cours…" />
         )}
         {fraudCheck.status === "fraud" && (
-          <Alert variant="error" title="Potential mismatch detected">
+          <Alert variant="error" title="Incohérence potentielle détectée">
             <div className="whitespace-pre-line">{fraudCheck.message}</div>
             {fraudCheck.similarity !== null && (
               <div className="mt-3 flex items-center justify-center">
@@ -157,11 +199,11 @@ export function AddToolForm({ onSuccess }: AddToolFormProps) {
           </div>
         )}
 
-        {/* Error/Success Messages */}
+        {/* Messages d'erreur/succès */}
         {error && (
           <Alert
             variant="error"
-            title="We couldn't save your tool"
+            title="Impossible de sauvegarder votre outil"
             onClose={clearMessages}
           >
             <div className="whitespace-pre-line">{error}</div>
@@ -173,7 +215,7 @@ export function AddToolForm({ onSuccess }: AddToolFormProps) {
           </Alert>
         )}
         {success && (
-          <Alert variant="success" title="All set!" onClose={clearMessages}>
+          <Alert variant="success" title="Terminé !" onClose={clearMessages}>
             {success}
           </Alert>
         )}
@@ -208,22 +250,47 @@ export function AddToolForm({ onSuccess }: AddToolFormProps) {
           onDeleteImage={remove}
           onSetPrimary={setPrimary}
         />
+
+        {/* Bouton de soumission mobile */}
+        <div className="lg:hidden mt-8">
+          <div className="rounded-3xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6">
+            <h2 className="text-xl font-semibold">Actions</h2>
+            <p className="text-sm text-neutral-500 mt-2">
+              Vérifiez vos informations, puis sauvegardez votre outil.
+            </p>
+            <button
+              type="submit"
+              disabled={loading || fraudCheck.status === "fraud" || !user?.userId}
+              className="mt-6 w-full px-5 py-3 rounded-full bg-bleu-nuit text-white disabled:opacity-60 hover:bg-opacity-90 transition-all disabled:cursor-not-allowed"
+            >
+              {loading ? "Sauvegarde en cours…" : "Sauvegarder l'outil"}
+            </button>
+          </div>
+        </div>
       </form>
 
-      {/* Sidebar */}
-      <div className="w-full lg:w-1/3 mt-8 lg:mt-0">
+      {/* Sidebar - Desktop seulement */}
+      <div className="hidden lg:block w-full lg:w-1/3 mt-8 lg:mt-0">
         <div className="listingSectionSidebar__wrap rounded-3xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 lg:p-8">
           <h2 className="text-xl font-semibold">Actions</h2>
           <p className="text-sm text-neutral-500 mt-2">
-            Review your details, then save your tool.
+            Vérifiez vos informations, puis sauvegardez votre outil.
           </p>
           <button
-            type="submit"
-            disabled={loading || fraudCheck.status === "fraud" || !session?.user?.id}
-            className="mt-6 w-full px-5 py-3 rounded-full bg-bleu-nuit text-white disabled:opacity-60 hover:bg-opacity-90 transition-all"
+            type="button"
+            disabled={loading || fraudCheck.status === "fraud" || !user?.userId}
+            className="mt-6 w-full px-5 py-3 rounded-full bg-bleu-nuit text-white disabled:opacity-60 hover:bg-opacity-90 transition-all disabled:cursor-not-allowed"
+            onClick={handleSubmit}
           >
-            {loading ? "Saving…" : "Save tool"}
+            {loading ? "Sauvegarde en cours…" : "Sauvegarder l'outil"}
           </button>
+          
+          {/* Informations utilisateur */}
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Connecté en tant que: <strong>{user.firstName} {user.lastName}</strong>
+            </p>
+          </div>
         </div>
       </div>
     </div>
