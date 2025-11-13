@@ -1,4 +1,3 @@
-// src/features/Cards/services/user.ts
 import { db } from '@/app/api/cards/db';
 import { getCurrentUserId } from '@/lib/auth-jwt-server';
 
